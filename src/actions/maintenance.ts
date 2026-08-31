@@ -24,6 +24,7 @@ import {
   initiateVendorRepairSchema,
   completeRepairSchema,
   panelRepairSchema,
+  flagForRepairSchema,
   getRepairHistoryParamsSchema,
   getAssetMaintenanceHistoryParamsSchema,
 } from '@/lib/validations/maintenance';
@@ -167,6 +168,7 @@ export async function getTicketForIssueReview(
       salvageValue: salvage,
       usefulLifeMonths: row.asset.usefulLifeMonths,
       purchaseDate: purchase?.purchaseDate ?? null,
+      pillar: row.category?.pillar,
     });
 
     // Calculate Total Cost of Ownership (add repair costs)
@@ -334,6 +336,7 @@ async function loadRepairHistory(page = 1, pageSize = 10, searchTerm = '') {
           vendorName: maintenanceTickets.vendorName,
           actualCompletionDate: maintenanceTickets.actualCompletionDate,
           actualCost: maintenanceTickets.actualCost,
+          currencyCode: maintenanceTickets.currencyCode,
           resolutionNotes: maintenanceTickets.resolutionNotes,
           status: maintenanceTickets.status,
           createdAt: maintenanceTickets.createdAt,
@@ -634,7 +637,8 @@ export async function initiateVendorRepair(
   vendorId: string,
   rmaNumber: string,
   estimatedCost?: string,
-  expectedReturnDate?: string
+  expectedReturnDate?: string,
+  currencyCode?: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
   const user = await enforceActionAccess();
@@ -649,6 +653,7 @@ export async function initiateVendorRepair(
     rmaNumber: rmaNumber || undefined,
     estimatedCost: estimatedCost || undefined,
     expectedReturnDate: expectedReturnDate || undefined,
+    currencyCode: currencyCode || undefined,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
@@ -681,18 +686,40 @@ export async function initiateVendorRepair(
 
       const now = new Date();
 
-      const closedTicket = await tx
-        .update(maintenanceTickets)
-        .set({
-          status: 'COMPLETED',
-          resolutionNotes: 'Dispatched to vendor repair',
-          actualCompletionDate: now,
-          updatedAt: now,
-        })
-        .where(eq(maintenanceTickets.id, ticketId))
-        .returning({ id: maintenanceTickets.id });
-      if (closedTicket.length === 0)
-        throw new Error('Failed to close initial triage ticket');
+      // Dispatching is a stage of the existing ticket, not a new one.
+      //
+      // This used to close the triage ticket as COMPLETED and insert a second
+      // VENDOR ticket, which broke two things at once. Repair History lists
+      // every COMPLETED ticket, so the dispatch row showed up there as a
+      // finished repair with no cost, sitting next to the real one — the same
+      // asset recorded twice for a single repair. And the new ticket's
+      // reportedIssue was overwritten with "Vendor repair dispatch - <vendor>",
+      // so the operator closing the repair saw that placeholder instead of the
+      // fault someone actually reported.
+      //
+      // `ticketType` + `status` already encode the stage: INTERNAL/ACTIVE is
+      // the triage queue, VENDOR/ACTIVE is Active Repairs, COMPLETED is
+      // history. Promoting the row moves it between those views on its own and
+      // keeps reportedIssue intact for the whole lifecycle.
+      const triageResult = await tx
+        .select()
+        .from(maintenanceTickets)
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
+        .limit(1);
+      if (triageResult.length === 0) throw new Error('Triage ticket not found');
+      const triageTicket = triageResult[0];
+
+      if (triageTicket.assetId !== parsed.data.assetId)
+        throw new Error('Ticket does not belong to this asset');
+      // Guards against dispatching the same ticket twice from a stale tab.
+      // Status alone is not enough: dispatching leaves the ticket ACTIVE and
+      // only flips ticketType, so a second submit would sail past a status
+      // check and overwrite the vendor and RMA while duplicating the audit log
+      // and webhook. Only a ticket still in triage can be dispatched.
+      if (triageTicket.status !== 'ACTIVE')
+        throw new Error('Ticket is no longer active');
+      if (triageTicket.ticketType !== 'INTERNAL')
+        throw new Error('Ticket has already been dispatched to a vendor');
 
       const updatedAsset = await tx
         .update(assets)
@@ -702,29 +729,24 @@ export async function initiateVendorRepair(
       if (updatedAsset.length === 0)
         throw new Error('Failed to update asset status');
 
-      const newTicketValues = {
-        assetId: parsed.data.assetId,
-        ticketType: 'VENDOR' as const,
-        vendorName: vendor.companyName,
-        rmaNumber: parsed.data.rmaNumber ?? null,
-        reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-        estimatedCost:
-          parsed.data.estimatedCost != null
-            ? parsed.data.estimatedCost.toString()
-            : null,
-        estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
-        status: 'ACTIVE' as const,
-        dispatchedById: user.id,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      const newTickets = await tx
-        .insert(maintenanceTickets)
-        .values(newTicketValues)
+      const dispatchedTickets = await tx
+        .update(maintenanceTickets)
+        .set({
+          ticketType: 'VENDOR' as const,
+          vendorName: vendor.companyName,
+          rmaNumber: parsed.data.rmaNumber ?? null,
+          estimatedCost:
+            parsed.data.estimatedCost != null
+              ? parsed.data.estimatedCost.toString()
+              : null,
+          currencyCode: parsed.data.currencyCode,
+          estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
+          updatedAt: now,
+        })
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .returning();
-      if (!newTickets[0])
-        throw new Error('Failed to create vendor repair ticket');
+      if (!dispatchedTickets[0])
+        throw new Error('Failed to update vendor repair ticket');
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
@@ -744,16 +766,16 @@ export async function initiateVendorRepair(
       });
 
       void dispatchWebhookEvent('maintenance.created', {
-        ticketId: newTickets[0].id,
+        ticketId: dispatchedTickets[0].id,
         assetId: parsed.data.assetId,
-        ticketType: newTicketValues.ticketType,
-        reportedIssue: newTicketValues.reportedIssue,
+        ticketType: 'VENDOR',
+        reportedIssue: dispatchedTickets[0].reportedIssue,
       });
 
       return {
         success: true,
         message: 'Asset dispatched successfully',
-        ticketId: newTickets[0].id,
+        ticketId: dispatchedTickets[0].id,
         assetId: parsed.data.assetId,
       };
     });
@@ -771,9 +793,15 @@ export async function initiateVendorRepair(
     const knownMessages = [
       'Asset ',
       'Vendor ',
-      'Failed to close',
+      'Triage ticket not found',
       'Failed to update asset status',
-      'Failed to create vendor repair ticket',
+      'Failed to update vendor repair ticket',
+      // Both are actionable by the operator — usually a second tab that already
+      // dispatched this ticket — so they must not collapse into the generic
+      // message.
+      'Ticket does not belong to this asset',
+      'Ticket is no longer active',
+      'Ticket has already been dispatched to a vendor',
     ];
     const isKnown =
       error instanceof Error &&
@@ -1113,6 +1141,150 @@ export async function reportDefectiveFromPanel(
         isKnown && error instanceof Error
           ? error.message
           : 'Failed to dispatch asset for repair.',
+    };
+  }
+}
+
+/**
+ * Flags an asset for repair from the asset detail panel.
+ * Creates an INTERNAL maintenance ticket (ticketType = 'INTERNAL') so the
+ * asset appears in the Pending Review tab of the Maintenance module. The IT
+ * team can then triage it and dispatch to a vendor or resolve it internally
+ * using the existing maintenance workflows.
+ */
+export async function flagAssetForRepair(
+  assetId: string,
+  issueNote: string
+): Promise<{ success: boolean; message: string; ticketId?: number }> {
+  // 1. Auth & Role Validation
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
+  // 2. Input Validation
+  const parsed = flagForRepairSchema.safeParse({ assetId, issueNote });
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? 'Invalid input.',
+    };
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Verify asset exists and is actionable
+      const [currentAsset] = await tx
+        .select()
+        .from(assets)
+        .where(eq(assets.id, parsed.data.assetId))
+        .limit(1);
+
+      if (!currentAsset)
+        throw new Error(`Asset ${parsed.data.assetId} not found`);
+
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived)
+        throw new Error('Asset is disposed or archived');
+
+      const now = new Date();
+
+      // Create INTERNAL maintenance ticket → lands in Pending Review tab
+      const [newTicket] = await tx
+        .insert(maintenanceTickets)
+        .values({
+          assetId: parsed.data.assetId,
+          ticketType: 'INTERNAL',
+          reportedIssue: parsed.data.issueNote,
+          status: 'ACTIVE',
+          dispatchedById: user.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      if (!newTicket) throw new Error('Failed to create maintenance ticket');
+
+      // Update asset status to 'In Repair'
+      const [updatedAsset] = await tx
+        .update(assets)
+        .set({ status: 'In Repair', updatedAt: now })
+        .where(eq(assets.id, parsed.data.assetId))
+        .returning({ id: assets.id });
+
+      if (!updatedAsset) throw new Error('Failed to update asset status');
+
+      // Terminate any active assignments
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, parsed.data.assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${
+            assignErr instanceof Error ? assignErr.message : 'Unknown error'
+          }`
+        );
+      }
+
+      // Audit log
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: parsed.data.assetId,
+        actionType: 'UPDATE',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status },
+        newValue: {
+          status: 'In Repair',
+          actionContext: 'REPAIR_FLAGGED_FROM_PANEL',
+          issueNote: parsed.data.issueNote,
+        },
+        performedAt: now,
+      });
+
+      void dispatchWebhookEvent('maintenance.created', {
+        ticketId: newTicket.id,
+        assetId: parsed.data.assetId,
+        ticketType: 'INTERNAL',
+        reportedIssue: parsed.data.issueNote,
+      });
+
+      return {
+        success: true as const,
+        message: 'Asset flagged for repair. It will appear in Pending Review.',
+        ticketId: newTicket.id,
+      };
+    });
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
+  } catch (error) {
+    const knownMessages = [
+      'Asset ',
+      'Asset is disposed or archived',
+      'Failed to create maintenance ticket',
+      'Failed to update asset status',
+      'Failed to close active assignments',
+    ];
+    const isKnown =
+      error instanceof Error &&
+      knownMessages.some((m) => error.message.startsWith(m));
+    return {
+      success: false,
+      message:
+        isKnown && error instanceof Error
+          ? error.message
+          : 'Failed to flag asset for repair.',
     };
   }
 }

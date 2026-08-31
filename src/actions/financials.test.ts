@@ -63,7 +63,11 @@ vi.mock('@/db', () => ({ db: mockDb }));
 
 vi.mock('@/db/schema', () => ({
   assets: { id: 'assets.id', status: 'assets.status' },
-  categories: { id: 'categories.id', name: 'categories.name' },
+  categories: {
+    id: 'categories.id',
+    name: 'categories.name',
+    pillar: 'categories.pillar',
+  },
   models: { id: 'models.id', categoryId: 'models.categoryId' },
   assetPurchases: {
     assetId: 'assetPurchases.assetId',
@@ -137,8 +141,9 @@ describe('Financials Actions', () => {
         role: 'FinancialAuditor',
       });
 
-      // Two `db.with(...).select(...)` calls now: the page of rows, then the
-      // summary totals, which needs the same CTE declared on its own statement.
+      // Three `db.with(...).select(...)` calls now: the page of rows, the
+      // summary totals, and the dated repairs behind the trend chart. Each
+      // needs the same CTE declared on its own statement.
       mockDb.with.mockReturnValue({
         select: vi
           .fn()
@@ -162,6 +167,16 @@ describe('Financials Actions', () => {
                 originalPrice: '1000',
                 currencyCode: 'USD',
                 totalRepairCosts: '250',
+                purchaseDate: '2024-03-15T00:00:00.000Z',
+              },
+            ])
+          )
+          .mockReturnValueOnce(
+            chain([
+              {
+                completedAt: new Date('2024-05-20T00:00:00.000Z'),
+                actualCost: '250',
+                currencyCode: 'USD',
               },
             ])
           ),
@@ -178,6 +193,61 @@ describe('Financials Actions', () => {
       // its own query rather than added up from the page.
       expect(result.summary.assetCount).toBe(1);
       expect(result.summary.totalTCO).toBeGreaterThan(0);
+    });
+
+    it('accumulates the trend series across months', async () => {
+      mockGetAuthenticatedUser.mockResolvedValue({
+        id: 'f',
+        role: 'FinancialAuditor',
+      });
+
+      mockDb.with.mockReturnValue({
+        select: vi
+          .fn()
+          .mockReturnValueOnce(chain([]))
+          .mockReturnValueOnce(
+            chain([
+              {
+                originalPrice: '1000',
+                currencyCode: 'USD',
+                purchaseDate: '2024-03-15T00:00:00.000Z',
+                totalRepairCosts: '250',
+              },
+            ])
+          )
+          .mockReturnValueOnce(
+            chain([
+              {
+                completedAt: new Date('2024-05-20T00:00:00.000Z'),
+                actualCost: '100',
+                currencyCode: 'USD',
+              },
+              {
+                completedAt: new Date('2024-07-02T00:00:00.000Z'),
+                actualCost: '150',
+                currencyCode: 'USD',
+              },
+            ])
+          ),
+      });
+
+      const result = await getTCOLedger();
+
+      expect(result.trend.map((p) => p.month)).toEqual([
+        '2024-03',
+        '2024-05',
+        '2024-07',
+      ]);
+      // Purchase lands once and holds; maintenance keeps accruing on top.
+      expect(result.trend[0].maintenance).toBe(0);
+      expect(result.trend[2].purchase).toBe(result.trend[0].purchase);
+      expect(result.trend[2].maintenance).toBeGreaterThan(
+        result.trend[1].maintenance
+      );
+      // Total is the two components, at every point.
+      for (const point of result.trend) {
+        expect(point.total).toBeCloseTo(point.purchase + point.maintenance, 2);
+      }
     });
   });
 

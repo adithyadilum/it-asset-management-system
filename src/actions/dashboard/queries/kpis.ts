@@ -3,7 +3,9 @@ import { db } from '@/db';
 import {
   assets,
   assetPurchases,
+  categories,
   maintenanceTickets,
+  models,
   softwareLicenses,
   softwareAllocations,
   assetAssignments,
@@ -161,7 +163,11 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
                       'asset_purchases.exchange_rate',
                       'assets.salvage_value',
                       'assets.useful_life_months',
-                      'asset_purchases.purchase_date'
+                      'asset_purchases.purchase_date',
+                      undefined,
+                      // Software is carried at cost, so this figure still
+                      // covers the same assets as total acquisition value.
+                      'categories.pillar'
                     )
                   )}
                 END
@@ -173,16 +179,23 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        // Joined only so the NBV expression can read the pillar.
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
         .where(eq(assets.isArchived, false)),
 
+      // Grouped by the currency the ticket recorded, so each bucket converts
+      // with its own rate below.
       db
         .select({
+          currencyCode: maintenanceTickets.currencyCode,
           allTimeRepair: sql<number>`SUM(${maintenanceTickets.actualCost})`,
           repairThisMonth: sql<number>`SUM(CASE WHEN ${maintenanceTickets.actualCompletionDate} >= DATE_TRUNC('month', CURRENT_DATE) THEN ${maintenanceTickets.actualCost} ELSE 0 END)`,
           repairLastMonth: sql<number>`SUM(CASE WHEN ${maintenanceTickets.actualCompletionDate} >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month' AND ${maintenanceTickets.actualCompletionDate} < DATE_TRUNC('month', CURRENT_DATE) THEN ${maintenanceTickets.actualCost} ELSE 0 END)`,
         })
         .from(maintenanceTickets)
-        .where(eq(maintenanceTickets.status, 'COMPLETED')),
+        .where(eq(maintenanceTickets.status, 'COMPLETED'))
+        .groupBy(maintenanceTickets.currencyCode),
 
       db
         .select({
@@ -282,32 +295,22 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       financialMetricsRes[0]?.warrantyCovered || 0
     );
 
-    // Maintenance actualCost has no currency column — UI convention is USD (see repair history page).
-    // Normalize to LKR using the same static rates as the rest of the app.
-    const rawRepairAll = parseFloat(
-      maintenanceMetricsRes[0]?.allTimeRepair?.toString() || '0'
-    );
-    const rawRepairThisMonth = parseFloat(
-      maintenanceMetricsRes[0]?.repairThisMonth?.toString() || '0'
-    );
-    const rawRepairLastMonth = parseFloat(
-      maintenanceMetricsRes[0]?.repairLastMonth?.toString() || '0'
-    );
-    const cumulativeRepairSpend = convertCurrencyAmount(
-      rawRepairAll,
-      'USD',
-      'LKR'
-    );
-    const repairThisMonth = convertCurrencyAmount(
-      rawRepairThisMonth,
-      'USD',
-      'LKR'
-    );
-    const repairLastMonth = convertCurrencyAmount(
-      rawRepairLastMonth,
-      'USD',
-      'LKR'
-    );
+    // Repair costs carry their own currency (maintenance_tickets.currency_code,
+    // added with the repair-dialog currency picker). This used to assume every
+    // amount was USD and convert the lot to LKR, which multiplied a fleet of
+    // LKR-denominated repairs by ~303 -- a 1.1M repair bill rendered as 353M.
+    const sumRepairs = (
+      field: 'allTimeRepair' | 'repairThisMonth' | 'repairLastMonth'
+    ) =>
+      maintenanceMetricsRes.reduce((total, row) => {
+        const amount = parseFloat(row[field]?.toString() || '0');
+        if (!Number.isFinite(amount) || amount === 0) return total;
+        return total + convertCurrencyAmount(amount, row.currencyCode, 'LKR');
+      }, 0);
+
+    const cumulativeRepairSpend = sumRepairs('allTimeRepair');
+    const repairThisMonth = sumRepairs('repairThisMonth');
+    const repairLastMonth = sumRepairs('repairLastMonth');
     const repairSpendTrend =
       repairLastMonth > 0
         ? Math.round(

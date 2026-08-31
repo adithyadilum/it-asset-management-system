@@ -60,6 +60,7 @@ export const GET = withApiKey(
           assetTag: assets.assetTag,
           name: assets.name,
           categoryName: categories.name,
+          pillar: categories.pillar,
           purchaseDate: assetPurchases.purchaseDate,
           basePrice: assetPurchases.basePrice,
           tax: assetPurchases.tax,
@@ -89,6 +90,7 @@ export const GET = withApiKey(
           salvageValue: salvage,
           usefulLifeMonths: usefulLife,
           purchaseDate: row.purchaseDate,
+          pillar: row.pillar,
         });
 
         const roundedBookValue = Math.round(bookValue * 100) / 100;

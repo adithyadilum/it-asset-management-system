@@ -125,6 +125,8 @@ import {
   resolveIssueInternally,
   initiateVendorRepair,
   completeRepairTicket,
+  flagAssetForRepair,
+  reportDefectiveFromPanel,
 } from '@/actions/maintenance';
 
 // ---------------------------------------------------------------------------
@@ -382,7 +384,7 @@ describe('Write Operations: initiateVendorRepair', () => {
     ).rejects.toThrow(`Asset ${validUuid} not found`);
   });
 
-  it('creates new VENDOR ticket, updates asset, closes triage ticket, logs audit', async () => {
+  it('promotes the triage ticket to VENDOR, updates asset, logs audit', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     const validUuid = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -390,9 +392,21 @@ describe('Write Operations: initiateVendorRepair', () => {
       chain([{ id: validUuid, status: 'Available' }])
     ); // Asset
     mockDb.select.mockReturnValueOnce(chain([{ id: 1, companyName: 'Dell' }])); // Vendor
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: 1,
+          assetId: validUuid,
+          status: 'ACTIVE',
+          ticketType: 'INTERNAL',
+          reportedIssue: 'replace display.',
+        },
+      ])
+    ); // Triage ticket being promoted
 
-    mockDb.update.mockReturnValue(chain([{ id: 1 }]));
-    mockDb.insert.mockReturnValue(chain([{ id: 2 }])); // New ticket inserted returning id=2
+    mockDb.update.mockReturnValue(
+      chain([{ id: 1, reportedIssue: 'replace display.' }])
+    );
 
     const result = await initiateVendorRepair(
       1,
@@ -403,11 +417,18 @@ describe('Write Operations: initiateVendorRepair', () => {
       '2025-12-31'
     );
     expect(result.success).toBe(true);
-    expect(result.ticketId).toBe(2);
+    // Same ticket id it started with — a second ticket is no longer inserted.
+    expect(result.ticketId).toBe(1);
 
+    // The operator's original wording has to survive the dispatch; it used to
+    // be replaced with "Vendor repair dispatch - Dell".
     expect(mockDispatchWebhookEvent).toHaveBeenCalledWith(
       'maintenance.created',
-      expect.objectContaining({ ticketId: 2, assetId: validUuid })
+      expect.objectContaining({
+        ticketId: 1,
+        assetId: validUuid,
+        reportedIssue: 'replace display.',
+      })
     );
 
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
@@ -416,6 +437,51 @@ describe('Write Operations: initiateVendorRepair', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
     expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
     expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
+  });
+
+  it('refuses to re-dispatch a ticket already sent to a vendor', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const validUuid = '550e8400-e29b-41d4-a716-446655440000';
+
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: validUuid, status: 'In Repair' }])
+    ); // Asset
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, companyName: 'Dell' }])); // Vendor
+    // Dispatching leaves the ticket ACTIVE and only flips ticketType, so a
+    // status-only guard would let a stale tab dispatch it a second time.
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: 1,
+          assetId: validUuid,
+          status: 'ACTIVE',
+          ticketType: 'VENDOR',
+        },
+      ])
+    );
+    mockDb.update.mockReturnValue(chain([{ id: 1 }]));
+
+    await expect(
+      initiateVendorRepair(1, validUuid, '1', 'RMA-123')
+    ).rejects.toThrow('Ticket has already been dispatched to a vendor');
+  });
+
+  it('refuses to dispatch a ticket that is already dispatched', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const validUuid = '550e8400-e29b-41d4-a716-446655440000';
+
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: validUuid, status: 'Available' }])
+    ); // Asset
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, companyName: 'Dell' }])); // Vendor
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: 1, assetId: validUuid, status: 'COMPLETED' }])
+    );
+    mockDb.update.mockReturnValue(chain([{ id: 1 }]));
+
+    await expect(
+      initiateVendorRepair(1, validUuid, '1', 'RMA-123')
+    ).rejects.toThrow('Ticket is no longer active');
   });
 });
 
@@ -506,6 +572,168 @@ describe('Write Operations: completeRepairTicket', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
     expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
     expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// flagAssetForRepair
+// ---------------------------------------------------------------------------
+
+describe('Write Operations: flagAssetForRepair', () => {
+  const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns { success: false } for unauthenticated user', async () => {
+    // enforceActionAccess throws; flagAssetForRepair does NOT re-throw so
+    // the outer catch converts it to a { success: false } response.
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    // The thrown error propagates out before the transaction starts.
+    await expect(
+      flagAssetForRepair(VALID_UUID, 'screen cracked')
+    ).rejects.toThrow();
+  });
+
+  it('throws Forbidden for Employee role', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    await expect(
+      flagAssetForRepair(VALID_UUID, 'screen cracked')
+    ).rejects.toThrow('Forbidden');
+  });
+
+  it('returns { success: false } when asset not found', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([])); // asset not found
+    const result = await flagAssetForRepair(VALID_UUID, 'screen cracked');
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/not found/i);
+  });
+
+  it('returns { success: false } for a disposed / archived asset', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: VALID_UUID, status: 'Disposed', isArchived: true }])
+    );
+    const result = await flagAssetForRepair(VALID_UUID, 'screen cracked');
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Asset is disposed or archived');
+  });
+
+  it('creates INTERNAL ticket, sets asset In Repair, emits webhook, logs audit', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
+
+    // Asset lookup
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: VALID_UUID, status: 'Available', isArchived: false }])
+    );
+
+    // insert → new ticket
+    mockDb.insert.mockReturnValueOnce(chain([{ id: 42 }]));
+    // update → asset status
+    mockDb.update.mockReturnValueOnce(chain([{ id: VALID_UUID }]));
+    // update → assetAssignments (void, no row-count check)
+    mockDb.update.mockReturnValueOnce(chain([]));
+    // insert → systemAuditLogs
+    mockDb.insert.mockReturnValueOnce(chain([]));
+
+    const result = await flagAssetForRepair(VALID_UUID, 'keyboard not working');
+
+    expect(result.success).toBe(true);
+    expect(result.ticketId).toBe(42);
+
+    // Webhook must be emitted for INTERNAL tickets (parity with VENDOR path)
+    expect(mockDispatchWebhookEvent).toHaveBeenCalledWith(
+      'maintenance.created',
+      expect.objectContaining({
+        ticketId: 42,
+        assetId: VALID_UUID,
+        ticketType: 'INTERNAL',
+        reportedIssue: 'keyboard not working',
+      })
+    );
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
+  });
+
+  it('returns { success: false } with generic message on unexpected DB error', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: VALID_UUID, status: 'Available', isArchived: false }])
+    );
+    // Simulate DB failure on ticket insert
+    mockDb.insert.mockReturnValueOnce({
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockRejectedValue(new Error('DB connection lost')),
+    });
+
+    const result = await flagAssetForRepair(VALID_UUID, 'power button broken');
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Failed to flag asset for repair.');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reportDefectiveFromPanel
+// ---------------------------------------------------------------------------
+
+describe('Write Operations: reportDefectiveFromPanel', () => {
+  const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Forbidden for Employee role', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    await expect(
+      reportDefectiveFromPanel(VALID_UUID, '1', 'RMA-001')
+    ).rejects.toThrow('Forbidden');
+  });
+
+  it('returns { success: false } when asset not found', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([])); // asset not found
+    const result = await reportDefectiveFromPanel(VALID_UUID, '1', 'RMA-001');
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/not found/i);
+  });
+
+  it('creates VENDOR ticket, emits webhook, revalidates paths', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: VALID_UUID, status: 'Available', isArchived: false }])
+    ); // Asset
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: '1', companyName: 'HP Inc.' }])
+    ); // Vendor
+
+    mockDb.update.mockReturnValueOnce(chain([{ id: VALID_UUID }])); // asset status
+    mockDb.update.mockReturnValueOnce(chain([])); // assetAssignments
+    mockDb.insert.mockReturnValueOnce(chain([{ id: 55 }])); // new ticket
+    mockDb.insert.mockReturnValueOnce(chain([])); // auditLog
+
+    const result = await reportDefectiveFromPanel(
+      VALID_UUID,
+      '1',
+      'RMA-001',
+      '500',
+      '2025-12-31'
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.ticketId).toBe(55);
+
+    expect(mockDispatchWebhookEvent).toHaveBeenCalledWith(
+      'maintenance.created',
+      expect.objectContaining({
+        ticketId: 55,
+        assetId: VALID_UUID,
+        ticketType: 'VENDOR',
+      })
+    );
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
     expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
   });
 });

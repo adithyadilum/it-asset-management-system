@@ -45,6 +45,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# swagger ui assets, copied from node_modules by scripts/copy-swagger-ui.mjs
+public/api-docs/vendor/
+
 #serviceworker
 public/sw.js 
 public/sw.js.map
@@ -56,3 +59,6 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local database snapshots taken before destructive cleanups.
+db-backups/

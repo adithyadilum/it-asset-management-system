@@ -84,8 +84,8 @@ export interface AssignmentsDashboardData {
 const assignedLocation = alias(locations, 'assigned_location');
 
 const DASHBOARD_PILLARS: Array<
-  'Hardware' | 'Office Furniture' | 'Office Electronics'
-> = ['Hardware', 'Office Furniture', 'Office Electronics'];
+  'Hardware' | 'Office Furniture' | 'Office Electronics' | 'Software'
+> = ['Hardware', 'Office Furniture', 'Office Electronics', 'Software'];
 
 export type AssignmentTargetType = 'user' | 'location';
 

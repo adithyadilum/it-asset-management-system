@@ -28,7 +28,7 @@ import {
   users,
 } from '@/db/schema';
 import {
-  SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT,
+  SOFTWARE_LICENSE_WARNING_REMAINING_PERCENT,
   isSoftwareLicenseNearCapacity,
 } from '@/lib/software-license-status';
 
@@ -240,7 +240,7 @@ export async function getAssetsByPillar(
               softwareLicenses.totalSeats,
               sql`coalesce(${assignedSeatsSubquery.count}, 0)`
             ),
-            sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 >= ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
+            sql`coalesce(${assignedSeatsSubquery.count}, 0) > 0 AND (${softwareLicenses.totalSeats} - coalesce(${assignedSeatsSubquery.count}, 0)) <= GREATEST(1, CEIL(${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_REMAINING_PERCENT}::numeric / 100))`
           )
         )
       );
@@ -254,7 +254,7 @@ export async function getAssetsByPillar(
           softwareLicenses.totalSeats,
           sql`coalesce(${assignedSeatsSubquery.count}, 0)`
         ),
-        sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 < ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
+        sql`(coalesce(${assignedSeatsSubquery.count}, 0) = 0 OR (${softwareLicenses.totalSeats} - coalesce(${assignedSeatsSubquery.count}, 0)) > GREATEST(1, CEIL(${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_REMAINING_PERCENT}::numeric / 100)))`
       );
     }
   }
@@ -444,7 +444,7 @@ export async function getAllAssetsUnified(
               softwareLicenses.totalSeats,
               sql`coalesce(${assignedSeatsSubquery.count}, 0)`
             ),
-            sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 >= ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
+            sql`coalesce(${assignedSeatsSubquery.count}, 0) > 0 AND (${softwareLicenses.totalSeats} - coalesce(${assignedSeatsSubquery.count}, 0)) <= GREATEST(1, CEIL(${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_REMAINING_PERCENT}::numeric / 100))`
           )
         )
       );
@@ -458,7 +458,7 @@ export async function getAllAssetsUnified(
           softwareLicenses.totalSeats,
           sql`coalesce(${assignedSeatsSubquery.count}, 0)`
         ),
-        sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 < ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
+        sql`(coalesce(${assignedSeatsSubquery.count}, 0) = 0 OR (${softwareLicenses.totalSeats} - coalesce(${assignedSeatsSubquery.count}, 0)) > GREATEST(1, CEIL(${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_REMAINING_PERCENT}::numeric / 100)))`
       );
     }
   }

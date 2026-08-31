@@ -10,6 +10,8 @@ import {
   assetDisposals,
   assets,
   assetPurchases,
+  categories,
+  models,
   systemAuditLogs,
   assetDocuments,
 } from '@/db/schema';
@@ -166,9 +168,12 @@ export async function executeAssetDisposal(
           purchaseDate: assetPurchases.purchaseDate,
           usefulLifeMonths: sql<number>`COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS})`,
           salvageValue: assets.salvageValue,
+          pillar: categories.pillar,
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
         .where(inArray(assetPurchases.assetId, normalizedAssetIds));
 
       const bookValuesMap = new Map<string, number>();
@@ -180,6 +185,7 @@ export async function executeAssetDisposal(
           salvageValue: salvage,
           usefulLifeMonths: row.usefulLifeMonths,
           purchaseDate: row.purchaseDate,
+          pillar: row.pillar,
         });
         bookValuesMap.set(row.assetId, Math.round(bookValue * 100) / 100);
       }

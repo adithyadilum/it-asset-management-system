@@ -175,6 +175,19 @@ export const assetRegistrationSchema = z
         .max(30, { message: 'Expected lifespan must be 30 years or less.' })
         .optional()
     ),
+    estimatedSalvageValue: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce
+        .number({ message: 'Estimated salvage value must be a valid number.' })
+        .nonnegative({
+          message: 'Estimated salvage value must be 0 or more.',
+        })
+        .optional()
+    ),
     vendorId: z.coerce
       .number({ message: 'Vendor is required.' })
       .int({ message: 'Vendor is required.' })

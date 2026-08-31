@@ -153,7 +153,75 @@ describe('MultiAssetAssignmentModal', () => {
     });
   });
 
-  it('prevents user assignment if assets include furniture', () => {
+  it('disables location assignment when a software asset is included in selection', () => {
+    renderModal({
+      assets: [
+        ...mockAssets,
+        {
+          assetId: '3',
+          assetTag: 'TAG-3',
+          assetName: 'Software License',
+          assetGroup: 'Software',
+        },
+      ],
+    });
+
+    const userRadio = screen.getByLabelText(
+      'Assign to User'
+    ) as HTMLInputElement;
+    const locationRadio = screen.getByLabelText(
+      'Assign to Location'
+    ) as HTMLInputElement;
+
+    expect(userRadio.disabled).toBe(false);
+    expect(userRadio.checked).toBe(true);
+    expect(locationRadio.disabled).toBe(true);
+    expect(
+      screen.getByRole('button', { name: /Assign 3 Assets/ })
+    ).toBeEnabled();
+  });
+
+  it('blocks a selection mixing software with office assets', async () => {
+    renderModal({
+      assets: [
+        {
+          assetId: '3',
+          assetTag: 'TAG-3',
+          assetName: 'Software License',
+          assetGroup: 'Software',
+        },
+        {
+          assetId: '4',
+          assetTag: 'TAG-4',
+          assetName: 'Chair',
+          assetGroup: 'Office Furniture',
+        },
+      ],
+    });
+
+    // A licence can only go to a person and a chair only to a location, so no
+    // single target satisfies the batch. Picking one silently is how a laptop
+    // beside a desk used to end up assigned to a room.
+    expect(
+      (screen.getByLabelText('Assign to User') as HTMLInputElement).disabled
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText('Assign to Location') as HTMLInputElement).disabled
+    ).toBe(true);
+    expect(
+      screen.getByText(/cannot be assigned in one go/i)
+    ).toBeInTheDocument();
+
+    const submit = screen.getByRole('button', { name: /Assign 2 Assets/ });
+    expect(submit).toBeDisabled();
+
+    fireEvent.click(submit);
+    await waitFor(() => {
+      expect(bulkAssignAssetsAction).not.toHaveBeenCalled();
+    });
+  });
+
+  it('allows hardware alongside office assets, targeting a location', () => {
     renderModal({
       assets: [
         ...mockAssets,
@@ -166,9 +234,48 @@ describe('MultiAssetAssignmentModal', () => {
       ],
     });
 
+    // Hardware can live at a location, so this batch still has a valid target.
+    expect(
+      (screen.getByLabelText('Assign to User') as HTMLInputElement).disabled
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText('Assign to Location') as HTMLInputElement).checked
+    ).toBe(true);
+    expect(
+      screen.getByRole('button', { name: /Assign 3 Assets/ })
+    ).toBeEnabled();
+  });
+
+  it('disables user assignment and defaults to location assignment when Office assets are selected', () => {
+    renderModal({
+      assets: [
+        {
+          assetId: '3',
+          assetTag: 'TAG-3',
+          assetName: 'Chair',
+          assetGroup: 'Office Furniture',
+        },
+        {
+          assetId: '4',
+          assetTag: 'TAG-4',
+          assetName: 'Monitor',
+          assetGroup: 'Office Electronics',
+        },
+      ],
+    });
+
     const userRadio = screen.getByLabelText(
       'Assign to User'
     ) as HTMLInputElement;
+    const locationRadio = screen.getByLabelText(
+      'Assign to Location'
+    ) as HTMLInputElement;
+
     expect(userRadio.disabled).toBe(true);
+    expect(locationRadio.disabled).toBe(false);
+    expect(locationRadio.checked).toBe(true);
+    expect(
+      screen.getByRole('button', { name: /Assign 2 Assets/ })
+    ).toBeEnabled();
   });
 });

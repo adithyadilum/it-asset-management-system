@@ -3,12 +3,17 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateStraightLineNBV,
   projectBookValueSeries,
+  straightLineNbvSqlFragment,
 } from '@/lib/depreciation';
 
 function monthsAgo(months: number) {
   const date = new Date();
-  date.setMonth(date.getMonth() - months);
+  // Day first, month second. The other order overflows whenever today is the
+  // 29th-31st and the target month is shorter: run on 30 August and
+  // `setMonth(February)` rolls into March, so `monthsAgo(6)` was really seven
+  // months back and the asset measured 500 rather than 600.
   date.setDate(1);
+  date.setMonth(date.getMonth() - months);
   return date;
 }
 
@@ -26,6 +31,52 @@ describe('calculateStraightLineNBV', () => {
 
     // Six months ago it was only half depreciated.
     expect(calculateStraightLineNBV(asset, monthsAgo(6))).toBeCloseTo(600, 5);
+  });
+});
+
+describe('non-depreciable pillars', () => {
+  const licence = {
+    cost: 1200,
+    salvageValue: 0,
+    usefulLifeMonths: 12,
+    purchaseDate: monthsAgo(24),
+  };
+
+  it('carries software at cost however long it has been held', () => {
+    // Two years into a one-year life, anything depreciable is fully written
+    // down. A licence is a right to use, not a wasting asset.
+    expect(calculateStraightLineNBV({ ...licence })).toBe(0);
+    expect(calculateStraightLineNBV({ ...licence, pillar: 'Software' })).toBe(
+      1200
+    );
+  });
+
+  it('still depreciates the physical pillars', () => {
+    for (const pillar of ['Hardware', 'Office Furniture', 'Office Electronics'])
+      expect(calculateStraightLineNBV({ ...licence, pillar })).toBe(0);
+  });
+
+  it('emits a CASE for the non-depreciable pillars when given a pillar column', () => {
+    const withPillar = straightLineNbvSqlFragment(
+      'total_cost',
+      'exchange_rate',
+      'salvage_value',
+      'useful_life_months',
+      'purchase_date',
+      undefined,
+      'categories.pillar'
+    );
+    expect(withPillar).toContain("categories.pillar IN ('Software')");
+
+    // Without the column every row depreciates, for sets already filtered.
+    const withoutPillar = straightLineNbvSqlFragment(
+      'total_cost',
+      'exchange_rate',
+      'salvage_value',
+      'useful_life_months',
+      'purchase_date'
+    );
+    expect(withoutPillar).not.toContain('CASE WHEN');
   });
 });
 

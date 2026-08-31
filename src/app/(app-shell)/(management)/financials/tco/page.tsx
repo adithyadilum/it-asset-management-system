@@ -14,7 +14,8 @@ async function TCOLedgerPageContent() {
   // and location, not only those on the first page of rows.
   const [response, filterOptions] = await Promise.all([
     getTCOLedger({ page: 1, pageSize: 16 }),
-    getFinancialsFilterOptions(),
+    // TCO reports software alongside everything else, so it keeps the pillar.
+    getFinancialsFilterOptions({ includeSoftwarePillar: true }),
   ]);
 
   return (
@@ -29,6 +30,7 @@ async function TCOLedgerPageContent() {
         initialPageCount={response.meta.totalPages}
         filterOptions={filterOptions}
         initialSummary={response.summary}
+        initialTrend={response.trend}
       />
     </div>
   );

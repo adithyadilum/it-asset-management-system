@@ -30,7 +30,7 @@ import {
   type FinancialsFilterOptions,
 } from '@/actions/financials';
 import { LedgerSummary } from '@/components/features/financials/ledger-summary';
-import { TCOCompositionChart } from '@/components/features/financials/tco-composition-chart';
+import { TCOTrendChart } from '@/components/features/financials/tco-trend-chart';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -40,23 +40,30 @@ interface TCOLedgerProps {
   /** Full option lists, read from the tables rather than the current page. */
   filterOptions?: FinancialsFilterOptions;
   initialSummary: TCOLedgerSummary;
+  initialTrend: TCOLedgerTrend;
 }
 
 export type TCOLedgerSummary = Awaited<
   ReturnType<typeof getTCOLedger>
 >['summary'];
 
+export type TCOLedgerTrend = Awaited<ReturnType<typeof getTCOLedger>>['trend'];
+
 export function TCOLedger({
   initialData,
   initialPageCount = 1,
   filterOptions,
   initialSummary,
+  initialTrend,
 }: TCOLedgerProps) {
   const [data, setData] = useState<TCOLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   // Held here, not on the page, so filtering the table filters the totals too.
   const [summary, setSummary] = useState(initialSummary);
+  // Server-computed: the series spans every matching asset's whole history,
+  // which the current page of rows cannot supply.
+  const [trend, setTrend] = useState(initialTrend);
   const [isPending, startTransition] = useTransition();
   const canReuseInitialDataRef = useRef(true);
 
@@ -155,6 +162,7 @@ export function TCOLedger({
       setData(response.data as unknown as TCOLedgerRecord[]);
       setPageCount(response.meta.totalPages);
       setSummary(response.summary);
+      setTrend(response.trend);
     });
   }, [
     pagination.pageIndex,
@@ -358,7 +366,7 @@ export function TCOLedger({
     // Natural height, not `h-full overflow-hidden`: the summary and the chart
     // above the table are meant to scroll away, and a fixed-height column would
     // instead squeeze the table into whatever was left over.
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <LedgerSummary
         asOf={summary.asOf}
         stats={[
@@ -386,19 +394,12 @@ export function TCOLedger({
         ]}
       />
 
-      <TCOCompositionChart
-        points={data.map((row) => ({
-          assetId: row.assetId,
-          purchase: convertCurrencyAmount(
-            row.originalPrice,
-            row.currencyCode || 'LKR',
-            currency
-          ),
-          maintenance: convertCurrencyAmount(
-            row.totalRepairCosts,
-            row.currencyCode || 'LKR',
-            currency
-          ),
+      <TCOTrendChart
+        points={trend.map((point) => ({
+          month: point.month,
+          purchase: inDisplayCurrency(point.purchase),
+          maintenance: inDisplayCurrency(point.maintenance),
+          total: inDisplayCurrency(point.total),
         }))}
         currencyCode={currency}
       />
@@ -459,9 +460,12 @@ export function TCOLedger({
         </Button>
       </FilterBar>
 
-      {/* Tall enough that once the filter row has scrolled to the top of the
-          viewport, the whole table is on screen. */}
-      <div className="flex min-h-[calc(100vh-11rem)] flex-col">
+      {/* A fixed height, not a minimum: the DataTable inside is `flex-1
+          min-h-0` around a scroll viewport, so capping the container here is
+          what makes extra rows scroll within the table instead of stretching
+          it. With `min-h-` the container grew with the row count, the page
+          grew with it, and the rows never scrolled internally. */}
+      <div className="flex h-[calc(100vh-11rem)] flex-col pb-6">
         {isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
             <TableSkeleton

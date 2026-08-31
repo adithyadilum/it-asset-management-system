@@ -142,6 +142,7 @@ export function DisposalReviewPanelWrapper({
             onOpenChange={setIsExecuteDialogOpen}
             selectedAssets={[row]}
             singleCategory={extendedData?.category ?? ''}
+            currencyCode={preferredCurrency}
             onSuccess={handleExecuteSuccess}
           />
         </>

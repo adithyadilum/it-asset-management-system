@@ -1,3 +1,4 @@
+import { isSoftwareLicenseExpired } from '@/lib/software-license-status';
 import type {
   RegistryFilterField,
   RegistryViewConfig,
@@ -143,6 +144,8 @@ export function buildSelectionActions(
     ) => void;
     onBulkTransfer: (rows: AssetRegistryRow[]) => void;
     onDispose: (rows: AssetRegistryRow[]) => void;
+    onAssignSoftware: (rows: AssetRegistryRow[]) => void;
+    onRenewSoftware: (rows: AssetRegistryRow[]) => void;
   }
 ): DataTableSelectionAction<AssetRegistryRow>[] {
   const actions: DataTableSelectionAction<AssetRegistryRow>[] = [
@@ -174,6 +177,31 @@ export function buildSelectionActions(
         );
       },
     });
+  }
+
+  // Software rows offer one action or the other, never both: an expired licence
+  // has to be renewed before it can be handed to anyone, and renewing a live
+  // one is meaningless. The table also stops the two kinds being selected
+  // together, so a selection is always uniformly one or the other.
+  if (config.view === 'software') {
+    actions.push({
+      id: 'assign-software',
+      label: 'Assign',
+      disabled: isMutating,
+      hidden: (selectedRows) =>
+        selectedRows.some((row) => isSoftwareLicenseExpired(row.expiryDate)),
+      onClick: callbacks.onAssignSoftware,
+    } as DataTableSelectionAction<AssetRegistryRow>);
+
+    actions.push({
+      id: 'renew-software',
+      label: 'Renew',
+      disabled: isMutating,
+      hidden: (selectedRows) =>
+        selectedRows.length === 0 ||
+        !selectedRows.every((row) => isSoftwareLicenseExpired(row.expiryDate)),
+      onClick: callbacks.onRenewSoftware,
+    } as DataTableSelectionAction<AssetRegistryRow>);
   }
 
   if (config.view !== 'software') {

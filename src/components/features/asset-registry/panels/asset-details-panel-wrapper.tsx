@@ -7,7 +7,7 @@ import { AssetEditForm } from './asset-edit-form';
 import { AddSoftwareUsersModal } from './add-software-users-modal';
 import { AssetAssignmentModal } from '@/components/features/operations/assignments/asset-assignment-modal';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
-import { InitiateRepairDialog } from '@/components/features/maintenance/initiate-repair-dialog';
+import { FlagForRepairDialog } from '@/components/features/maintenance/flag-for-repair-dialog';
 import { RequestReturnDialog } from '@/components/features/operations/assignments/request-return-dialog';
 import { RemindReturnDialog } from '@/components/features/operations/assignments/remind-return-dialog';
 import { MarkReturnedDialog } from '@/components/features/operations/assignments/mark-returned-dialog';
@@ -16,7 +16,7 @@ import {
   getEditDropdownOptionsAction,
 } from '@/actions/asset-registry-panels';
 import type { AssetFinancialVitals } from '@/lib/data/asset-financial-vitals-repo';
-import { getVendors, reportDefectiveFromPanel } from '@/actions/maintenance';
+import { flagAssetForRepair } from '@/actions/maintenance';
 import { revokeSoftwareLicenseAllocationAction } from '@/actions/software';
 
 import { tiqriToast } from '@/components/shared/sonner';
@@ -27,7 +27,7 @@ import {
   type AllocationData,
 } from '@/lib/data/asset-details-repo';
 import type { TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
-import type { Vendor } from '@/types/maintenance';
+
 import { RenewLicenseDialog } from './renew-license-dialog';
 
 type AssetPanelRequest = ReturnType<typeof getAssetPanelDataAction>;
@@ -147,15 +147,13 @@ export function AssetDetailsPanelWrapper({
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isDisposalDialogOpen, setIsDisposalDialogOpen] = useState(false);
-  const [isRepairDialogOpen, setIsRepairDialogOpen] = useState(false);
+  const [isFlagRepairDialogOpen, setIsFlagRepairDialogOpen] = useState(false);
   const [isRequestReturnDialogOpen, setIsRequestReturnDialogOpen] =
     useState(false);
   const [isRemindReturnDialogOpen, setIsRemindReturnDialogOpen] =
     useState(false);
   const [isMarkReturnedDialogOpen, setIsMarkReturnedDialogOpen] =
     useState(false);
-  const [repairVendors, setRepairVendors] = useState<Vendor[]>([]);
-  const [isRepairLoading, setIsRepairLoading] = useState(false);
 
   const sourceCurrency = data?.purchase?.currencyCode?.trim() || 'USD';
   const displayCurrency = displayCurrencyOverride ?? sourceCurrency;
@@ -258,18 +256,8 @@ export function AssetDetailsPanelWrapper({
     setIsMarkReturnedDialogOpen(true);
   }, []);
 
-  const handleSendForRepairClick = useCallback(async () => {
-    // Lazy-fetch vendors on button click
-    setIsRepairLoading(true);
-    try {
-      const vendorList = await getVendors();
-      setRepairVendors(vendorList as Vendor[]);
-      setIsRepairDialogOpen(true);
-    } catch {
-      tiqriToast.error('Failed to load vendors.');
-    } finally {
-      setIsRepairLoading(false);
-    }
+  const handleSendForRepairClick = useCallback(() => {
+    setIsFlagRepairDialogOpen(true);
   }, []);
 
   const handleRequestDisposalClick = useCallback(() => {
@@ -578,37 +566,25 @@ export function AssetDetailsPanelWrapper({
         />
       )}
 
-      {/* ---- Initiate Repair Dialog ---- */}
+      {/* ---- Flag for Repair Dialog ---- */}
       {data && (
-        <InitiateRepairDialog
-          isOpen={isRepairDialogOpen}
-          onClose={() => setIsRepairDialogOpen(false)}
-          onConfirm={async (formData) => {
-            try {
-              const result = await reportDefectiveFromPanel(
-                data.asset.id,
-                formData.vendorId,
-                formData.rmaNumber,
-                formData.estimatedCost || undefined,
-                formData.expectedReturnDate || undefined
+        <FlagForRepairDialog
+          isOpen={isFlagRepairDialogOpen}
+          onClose={() => setIsFlagRepairDialogOpen(false)}
+          onConfirm={async (issueNote) => {
+            const result = await flagAssetForRepair(data.asset.id, issueNote);
+            if (!result.success) {
+              throw new Error(
+                result.message || 'Failed to flag asset for repair'
               );
-
-              if (!result.success) {
-                throw new Error(
-                  result.message || 'Failed to dispatch asset for repair'
-                );
-              }
-
-              tiqriToast.success('Asset dispatched for repair.');
-              setRefreshNonce((n) => n + 1);
-              onRefreshRef?.current?.();
-            } catch (error) {
-              throw error; // Let the dialog handle the error display
             }
+            tiqriToast.success(
+              'Asset flagged for repair. Check the Pending Review tab in Maintenance.'
+            );
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
           }}
-          vendors={repairVendors}
-          isLoading={isRepairLoading}
-          assetId={data.asset.assetTag}
+          assetTag={data.asset.assetTag}
           assetName={data.asset.name || data.model.name || 'Unknown Asset'}
           assetSerial={data.asset.serialNumber || undefined}
         />

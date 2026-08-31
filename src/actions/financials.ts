@@ -75,7 +75,15 @@ export async function getDepreciationLedger(
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
-    const conditions = [ne(assets.status, 'Disposed')];
+    const conditions = [
+      ne(assets.status, 'Disposed'),
+      // Software assets are not depreciable; exclude them unless the caller
+      // explicitly filters for the Software pillar (contradictory predicates
+      // would always produce zero rows).
+      ...(pillar && pillar !== 'All' && pillar === 'Software'
+        ? []
+        : [ne(categories.pillar, 'Software')]),
+    ];
 
     if (search) {
       conditions.push(
@@ -424,6 +432,8 @@ export async function getTCOLedger(
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
         totalRepairCosts: repairCostsSq.totalRepair,
+        // Only used to date the trend series below; the totals ignore it.
+        purchaseDate: assetPurchases.purchaseDate,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
@@ -431,6 +441,28 @@ export async function getTCOLedger(
       .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
       .where(whereClause);
+
+    // Repairs have to be dated individually for the trend. `repairCostsSq`
+    // collapses them to one figure per asset, which says nothing about when the
+    // money was spent.
+    const maintenanceEvents = await db
+      .with(repairCostsSq)
+      .select({
+        completedAt: maintenanceTickets.actualCompletionDate,
+        actualCost: maintenanceTickets.actualCost,
+        currencyCode: maintenanceTickets.currencyCode,
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+      .where(
+        whereClause
+          ? and(eq(maintenanceTickets.status, 'COMPLETED'), whereClause)
+          : eq(maintenanceTickets.status, 'COMPLETED')
+      );
 
     let totalPurchase = 0;
     let totalMaintenance = 0;
@@ -452,8 +484,71 @@ export async function getTCOLedger(
       if (repairs > 0) maintainedCount += 1;
     }
 
+    // Cost accumulated per month, so the chart can show ownership cost building
+    // up over time rather than a snapshot. Undated rows still count toward the
+    // totals above; they just have no month to sit in.
+    const monthlyPurchase = new Map<string, number>();
+    const monthlyMaintenance = new Map<string, number>();
+
+    const addToMonth = (
+      bucket: Map<string, number>,
+      date: Date | string | null,
+      amount: number
+    ) => {
+      if (!date || !Number.isFinite(amount) || amount === 0) return;
+      const parsed = date instanceof Date ? date : new Date(date);
+      if (Number.isNaN(parsed.getTime())) return;
+      const key = `${parsed.getUTCFullYear()}-${String(
+        parsed.getUTCMonth() + 1
+      ).padStart(2, '0')}`;
+      bucket.set(key, (bucket.get(key) ?? 0) + amount);
+    };
+
+    for (const row of summaryRows) {
+      addToMonth(
+        monthlyPurchase,
+        row.purchaseDate,
+        convertCurrencyAmount(
+          parseFloat(row.originalPrice?.toString() || '0'),
+          row.currencyCode || 'LKR',
+          SUMMARY_CURRENCY
+        )
+      );
+    }
+
+    for (const row of maintenanceEvents) {
+      addToMonth(
+        monthlyMaintenance,
+        row.completedAt,
+        convertCurrencyAmount(
+          parseFloat(row.actualCost?.toString() || '0'),
+          row.currencyCode || 'LKR',
+          SUMMARY_CURRENCY
+        )
+      );
+    }
+
+    const months = Array.from(
+      new Set([...monthlyPurchase.keys(), ...monthlyMaintenance.keys()])
+    ).sort();
+
+    let runningPurchase = 0;
+    let runningMaintenance = 0;
+    const round = (value: number) => Math.round(value * 100) / 100;
+    const trend = months.map((month) => {
+      runningPurchase += monthlyPurchase.get(month) ?? 0;
+      runningMaintenance += monthlyMaintenance.get(month) ?? 0;
+      return {
+        month,
+        purchase: round(runningPurchase),
+        maintenance: round(runningMaintenance),
+        total: round(runningPurchase + runningMaintenance),
+      };
+    });
+
     return {
       data: ledgers,
+      trend,
       summary: {
         totalPurchase: Math.round(totalPurchase * 100) / 100,
         totalMaintenance: Math.round(totalMaintenance * 100) / 100,
@@ -517,7 +612,15 @@ export async function getWriteOffsLedger(
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
-    const conditions = [eq(assetDisposals.status, 'Completed')];
+    const conditions = [
+      eq(assetDisposals.status, 'Completed'),
+      // Software assets are excluded from the write-offs ledger; skip the
+      // exclusion only if the caller explicitly filters for 'Software' so the
+      // two predicates don't cancel each other out.
+      ...(pillar && pillar !== 'All' && pillar === 'Software'
+        ? []
+        : [ne(categories.pillar, 'Software')]),
+    ];
 
     if (search) {
       conditions.push(
@@ -717,7 +820,13 @@ export async function getWriteOffsLedger(
  * that page could not be filtered for, so the filter could not reach the rows
  * it existed to find. Read the distinct values from the tables instead.
  */
-export async function getFinancialsFilterOptions() {
+export async function getFinancialsFilterOptions(
+  // Depreciation and write-offs exclude software, so offering the pillar there
+  // would only ever return zero rows. TCO does include software -- purchase
+  // cost plus maintenance applies to a licence like anything else -- so it opts
+  // back in rather than showing rows it cannot filter by.
+  options: { includeSoftwarePillar?: boolean } = {}
+) {
   await enforceFinanceAccess();
 
   const [categoryRows, locationRows] = await Promise.all([
@@ -735,7 +844,18 @@ export async function getFinancialsFilterOptions() {
 
   return {
     categories: categoryRows.map((row) => row.name),
-    pillars: Array.from(new Set(categoryRows.map((row) => row.pillar))).sort(),
+    // Software assets are excluded from all financial ledgers that calculate
+    // depreciation or write-offs, so offering 'Software' as a pillar option
+    // would surface zero rows and mislead the auditor.
+    pillars: Array.from(
+      new Set(
+        categoryRows
+          .filter(
+            (row) => options.includeSoftwarePillar || row.pillar !== 'Software'
+          )
+          .map((row) => row.pillar)
+      )
+    ).sort(),
     locations: locationRows.map((row) => row.name),
   };
 }
