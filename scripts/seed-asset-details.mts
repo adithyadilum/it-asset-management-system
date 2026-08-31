@@ -13,6 +13,9 @@
  *   assets.salvage_value        the expected residual, as a share of cost
  *   system_audit_logs           a per-asset timeline
  *
+ * It also hands a few assets back, so the Returned Assets tab on the
+ * assignments page has rows to process instead of an empty state.
+ *
  * The keys are deliberately the exact `fieldName` strings from the category
  * schema. The edit form derives its editable set from `assetTracking`, so a key
  * that does not match would land in the read-only model-spec list instead.
@@ -1387,7 +1390,38 @@ async function run() {
         `  disposals now carrying an expected figure: ${disposedWithExpected}`
       );
 
-      // ── 5. Asset history ──────────────────────────────────────────────────
+      // ── 5. A few assets waiting to be processed back in ───────────────────
+      // The returned-assets tab reads assets whose status is 'Returned' and
+      // whose assignment carries a return date. Nothing in the fleet was in
+      // that state, so the tab was empty and Process Return had nothing to act
+      // on.
+      const HANDED_BACK = 3;
+      const toReturn = await tx<{ assignment_id: number; asset_id: string }[]>`
+        SELECT aa.id AS assignment_id, aa.asset_id
+        FROM asset_assignments aa
+        JOIN assets a ON a.id = aa.asset_id
+        WHERE aa.returned_date IS NULL
+          AND a.status = 'Assigned'
+          AND NOT a.is_archived
+        ORDER BY aa.assigned_date
+        LIMIT ${HANDED_BACK}`;
+
+      for (const r of toReturn) {
+        const handedBackAt = daysAgo(int(1, 9));
+        await tx`
+          UPDATE asset_assignments
+          SET returned_date = ${handedBackAt},
+              return_condition = 'Excellent'
+          WHERE id = ${r.assignment_id}`;
+        await tx`
+          UPDATE assets SET status = 'Returned', updated_at = ${handedBackAt}
+          WHERE id = ${r.asset_id}`;
+      }
+      summary.push(
+        `handed back: ${toReturn.length} assets now awaiting return processing`
+      );
+
+      // ── 6. Asset history ──────────────────────────────────────────────────
       // Only rows this script owns are cleared. Anything the running app
       // recorded against an asset -- a real assignment, a real repair -- is
       // left alone, so a re-run does not erase genuine activity.
