@@ -67,6 +67,10 @@ interface UseRegistrationFormProps {
   onRegistrationSuccess?: (assetId: string, modelName: string) => void;
 }
 
+/** 4.5 MB -- matches the server limit in storage.ts. Module scope so it is
+ * not a reactive value the callbacks below have to list as a dependency. */
+const MAX_INVOICE_FILE_SIZE = Math.floor(4.5 * 1024 * 1024);
+
 export function useRegistrationForm({
   initialPillar,
   categoryOptions = [],
@@ -195,8 +199,6 @@ export function useRegistrationForm({
       setCostPerSeat('0.00');
     }
   }, []);
-
-  const MAX_INVOICE_FILE_SIZE = Math.floor(4.5 * 1024 * 1024); // 4.5 MB — matches server limit in storage.ts
 
   const handleInvoiceSelection = useCallback((files: FileList | null) => {
     const selectedFile = files?.[0] ?? null;

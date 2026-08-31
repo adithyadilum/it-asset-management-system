@@ -11,6 +11,8 @@ import { type RegistryViewConfig } from '@/components/features/asset-registry/re
 import { DataTable } from '@/components/shared/data-table';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
 import { BulkTransferDialog } from '@/components/features/asset-registry/bulk-transfer-dialog';
+import { AddSoftwareUsersModal } from '@/components/features/asset-registry/panels/add-software-users-modal';
+import { RenewLicenseDialog } from '@/components/features/asset-registry/panels/renew-license-dialog';
 import { AssetPillarSelectionDialog } from '@/components/shared/asset-pillar-selection-dialog';
 import {
   FilterBar,
@@ -28,6 +30,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { isSoftwareLicenseExpired } from '@/lib/software-license-status';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import type { Row, RowSelectionState } from '@tanstack/react-table';
 import type {
   AssetRegistryCategory,
   AssetRegistryResult,
@@ -325,6 +329,36 @@ export function AssetRegistryClient({
   // Selection actions
   // -------------------------------------------------------------------------
 
+  // Selection is lifted out of the table so software rows can be kept to one
+  // kind at a time: an expired licence and a live one need different actions,
+  // and a mixed selection could satisfy neither.
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [softwareActionRows, setSoftwareActionRows] = useState<
+    AssetRegistryRow[]
+  >([]);
+  const [isSoftwareAssignOpen, setIsSoftwareAssignOpen] = useState(false);
+  const [isSoftwareRenewOpen, setIsSoftwareRenewOpen] = useState(false);
+
+  const selectedSoftwareKind = useMemo<'expired' | 'available' | null>(() => {
+    if (config.view !== 'software') return null;
+    const selected = filteredRows.filter((row) => rowSelection[row.id]);
+    if (selected.length === 0) return null;
+    return selected.some((row) => isSoftwareLicenseExpired(row.expiryDate))
+      ? 'expired'
+      : 'available';
+  }, [config.view, filteredRows, rowSelection]);
+
+  const canSelectRow = useMemo(() => {
+    if (config.view !== 'software') return true;
+    return (row: Row<AssetRegistryRow>) => {
+      if (selectedSoftwareKind === null) return true;
+      const kind = isSoftwareLicenseExpired(row.original.expiryDate)
+        ? 'expired'
+        : 'available';
+      return kind === selectedSoftwareKind;
+    };
+  }, [config.view, selectedSoftwareKind]);
+
   const selectionActions = useMemo(
     () =>
       buildSelectionActions(config, isMutating, {
@@ -343,6 +377,29 @@ export function AssetRegistryClient({
           setDisposalSelectionRows(selectedRowsForAction);
           setIsDisposalDialogOpen(true);
         },
+        // Seats and renewal terms are per licence, so both flows act on one
+        // row. The bulk buttons still gate on the whole selection, which is
+        // what decides whether Assign or Renew is the sensible action at all.
+        onAssignSoftware: (selectedRowsForAction) => {
+          if (selectedRowsForAction.length !== 1) {
+            tiqriToast.info(
+              'Allocate seats one licence at a time -- each has its own seat count.'
+            );
+            return;
+          }
+          setSoftwareActionRows(selectedRowsForAction);
+          setIsSoftwareAssignOpen(true);
+        },
+        onRenewSoftware: (selectedRowsForAction) => {
+          if (selectedRowsForAction.length !== 1) {
+            tiqriToast.info(
+              'Renew one licence at a time -- each has its own term and seat count.'
+            );
+            return;
+          }
+          setSoftwareActionRows(selectedRowsForAction);
+          setIsSoftwareRenewOpen(true);
+        },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [config, isMutating]
@@ -356,40 +413,53 @@ export function AssetRegistryClient({
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
-      {/* Category selector header */}
+      {/* Category selector header.
+
+          All Assets is the whole registry, so there is nothing for the picker
+          to switch to that the sidebar does not already offer -- it reads as a
+          filter that does not filter. The pillar views keep it, where moving
+          between sibling categories is the point. */}
       <div className="mb-4">
-        <Popover
-          open={isCategoryPopoverOpen}
-          onOpenChange={setIsCategoryPopoverOpen}
-        >
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={`inline-flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
-            >
-              <span>{selectedCategoryOption.name}</span>
-              <ChevronDown className="size-5 text-foreground mt-1" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            sideOffset={10}
-            className="w-fit rounded-lg border border-border p-2 shadow-xl"
+        {config.view === 'unified' ? (
+          <h1
+            className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
           >
-            <div className="w-max space-y-1">
-              {categoryOptions.map((categoryOption) => (
-                <button
-                  key={categoryOption.name}
-                  type="button"
-                  className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-foreground hover:bg-muted"
-                  onClick={() => handleCategorySelect(categoryOption.name)}
-                >
-                  {categoryOption.name}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+            {selectedCategoryOption.name}
+          </h1>
+        ) : (
+          <Popover
+            open={isCategoryPopoverOpen}
+            onOpenChange={setIsCategoryPopoverOpen}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`inline-flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
+              >
+                <span>{selectedCategoryOption.name}</span>
+                <ChevronDown className="size-5 text-foreground mt-1" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              sideOffset={10}
+              className="w-fit rounded-lg border border-border p-2 shadow-xl"
+            >
+              <div className="w-max space-y-1">
+                {categoryOptions.map((categoryOption) => (
+                  <button
+                    key={categoryOption.name}
+                    type="button"
+                    className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-foreground hover:bg-muted"
+                    onClick={() => handleCategorySelect(categoryOption.name)}
+                  >
+                    {categoryOption.name}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
@@ -460,6 +530,9 @@ export function AssetRegistryClient({
                   : [{ id: 'assetTag', desc: true }]
               }
               selectionActions={selectionActionsToDisplay}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              enableRowSelection={canSelectRow}
               selectionLabel={(selectedCount) =>
                 `${selectedCount} Assets Selected`
               }
@@ -548,6 +621,33 @@ export function AssetRegistryClient({
           selectedCount={printSelectionRows.length}
           onGenerate={handlePrintGenerate}
         />
+
+        {softwareActionRows[0] ? (
+          <AddSoftwareUsersModal
+            isOpen={isSoftwareAssignOpen}
+            onClose={(didAllocate) => {
+              setIsSoftwareAssignOpen(false);
+              setSoftwareActionRows([]);
+              if (didAllocate) setRefreshNonce((n) => n + 1);
+            }}
+            assetId={softwareActionRows[0].id}
+            availableSeats={softwareActionRows[0].availableSeats ?? 0}
+          />
+        ) : null}
+
+        {softwareActionRows[0] ? (
+          <RenewLicenseDialog
+            isOpen={isSoftwareRenewOpen}
+            assetId={softwareActionRows[0].id}
+            currentExpiry={softwareActionRows[0].expiryDate}
+            currentSeats={softwareActionRows[0].totalSeats}
+            onOpenChange={(open) => {
+              setIsSoftwareRenewOpen(open);
+              if (!open) setSoftwareActionRows([]);
+            }}
+            onRenewed={() => setRefreshNonce((n) => n + 1)}
+          />
+        ) : null}
 
         <AssetPillarSelectionDialog
           open={isPillarDialogOpen}

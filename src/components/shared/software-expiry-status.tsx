@@ -1,5 +1,6 @@
 import { differenceInDays } from 'date-fns';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { isSoftwareLicenseExpired } from '@/lib/software-license-status';
 import { cn } from '@/lib/utils';
 
 interface SoftwareExpiryStatusProps {
@@ -18,7 +19,7 @@ export function SoftwareExpiryStatus({
 
   if (expiryDate) {
     const daysLeft = differenceInDays(new Date(expiryDate), new Date());
-    if (daysLeft < 0) {
+    if (isSoftwareLicenseExpired(expiryDate)) {
       daysLeftText = 'Expired';
       daysLeftClass = 'text-red-600 font-medium';
     } else {
