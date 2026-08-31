@@ -72,9 +72,18 @@ const b = (fieldName: string, required = false): Field => ({
   inputType: 'Boolean',
   required,
 });
+/**
+ * A picker-style field, declared as Text rather than Dropdown.
+ *
+ * Bulk import validates a Dropdown value against `field.options`, and nothing
+ * in the app can populate that list: `CategoryCustomSchemaField` has no such
+ * property and the category form offers no UI for it. A Dropdown custom field
+ * therefore rejects every value an import supplies. Until options are a real
+ * feature these stay free text, which imports and edits cleanly.
+ */
 const dd = (fieldName: string, required = false): Field => ({
   fieldName,
-  inputType: 'Dropdown',
+  inputType: 'Text',
   required,
 });
 
