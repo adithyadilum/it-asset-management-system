@@ -59,7 +59,7 @@ async function DashboardPageContent() {
     <DashboardRefreshProvider>
       <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-background overflow-hidden">
         {/* Pinned header */}
-        <div className="shrink-0 px-6 pt-5 pb-3 bg-background">
+        <div className="shrink-0 px-6 pt-6 pb-3 bg-background">
           <DashboardHeader userName={userName} userRole={userRole} />
         </div>
 

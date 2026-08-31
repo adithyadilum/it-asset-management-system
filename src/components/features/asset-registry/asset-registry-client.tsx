@@ -419,47 +419,53 @@ export function AssetRegistryClient({
           to switch to that the sidebar does not already offer -- it reads as a
           filter that does not filter. The pillar views keep it, where moving
           between sibling categories is the point. */}
+      {/* The h1 wraps both branches. The pillar views used to render their
+          title as a bare button, so four of the five registry pages had no
+          heading element at all -- visually identical, but nothing for the
+          document outline or a screen reader to land on. A button is phrasing
+          content, so it nests here legally, and the type styles are inherited
+          rather than repeated on both branches. */}
       <div className="mb-4">
-        {config.view === 'unified' ? (
-          <h1
-            className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
-          >
-            {selectedCategoryOption.name}
-          </h1>
-        ) : (
-          <Popover
-            open={isCategoryPopoverOpen}
-            onOpenChange={setIsCategoryPopoverOpen}
-          >
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={`inline-flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
-              >
-                <span>{selectedCategoryOption.name}</span>
-                <ChevronDown className="size-5 text-foreground mt-1" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              sideOffset={10}
-              className="w-fit rounded-lg border border-border p-2 shadow-xl"
+        <h1
+          className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
+        >
+          {config.view === 'unified' ? (
+            selectedCategoryOption.name
+          ) : (
+            <Popover
+              open={isCategoryPopoverOpen}
+              onOpenChange={setIsCategoryPopoverOpen}
             >
-              <div className="w-max space-y-1">
-                {categoryOptions.map((categoryOption) => (
-                  <button
-                    key={categoryOption.name}
-                    type="button"
-                    className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-foreground hover:bg-muted"
-                    onClick={() => handleCategorySelect(categoryOption.name)}
-                  >
-                    {categoryOption.name}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                >
+                  <span>{selectedCategoryOption.name}</span>
+                  <ChevronDown className="size-5 text-foreground mt-1" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={10}
+                className="w-fit rounded-lg border border-border p-2 shadow-xl"
+              >
+                <div className="w-max space-y-1">
+                  {categoryOptions.map((categoryOption) => (
+                    <button
+                      key={categoryOption.name}
+                      type="button"
+                      className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-foreground hover:bg-muted"
+                      onClick={() => handleCategorySelect(categoryOption.name)}
+                    >
+                      {categoryOption.name}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+        </h1>
       </div>
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
