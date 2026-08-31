@@ -11,6 +11,7 @@ import { logAuditAction } from '@/lib/audit';
 import { USER_ROLES, type UserRole } from '@/types/auth';
 import { canAccessMobile } from '@/lib/auth/roles';
 import { isPublicAssetPath } from '@/lib/auth/public-paths';
+import { isSessionUnrecoverable } from '@/lib/auth/session-liveness';
 
 /** Validates an unknown JWT claim against the known role enum. */
 function normalizeTokenRole(role: unknown): UserRole | null {
@@ -20,7 +21,7 @@ function normalizeTokenRole(role: unknown): UserRole | null {
   return null;
 }
 
-/** Decrypts the JWT cookie and extracts auth metadata (stateless — no Keycloak refresh). */
+/** Decrypts the JWT cookie and extracts auth metadata (stateless â€” no Keycloak refresh). */
 async function verifyTokenAndRole(request: NextRequest) {
   const authTimer = startLatencyTimer();
 
@@ -37,30 +38,23 @@ async function verifyTokenAndRole(request: NextRequest) {
       return null;
     }
 
-    // Used to decide if we should redirect authenticated users away from /login.
-    // We do NOT block access on expiry — the app-shell handles silent refresh.
-    // Blocking here would kick users out every ~5 min even with valid refresh tokens.
-    const EXPIRY_BUFFER_MS = 30_000;
-    const accessTokenExpires = token.accessTokenExpires as number | undefined;
-    const isAccessTokenFresh =
-      typeof accessTokenExpires === 'number'
-        ? Date.now() < accessTokenExpires - EXPIRY_BUFFER_MS
-        : true;
-
-    // Both tokens expired — session is unrecoverable, force re-login.
-    const refreshTokenExpires = token.refreshTokenExpires as number | undefined;
-    if (
-      !isAccessTokenFresh &&
-      typeof refreshTokenExpires === 'number' &&
-      Date.now() > refreshTokenExpires
-    ) {
+    // The only liveness test here, and deliberately not a timestamp one.
+    //
+    // This used to compare `accessTokenExpires` against a `refreshTokenExpires`
+    // deadline read from the cookie, which signed people out roughly 30 minutes
+    // after login: that deadline was stamped once at sign-in and nothing
+    // advanced it. The cookie is rewritten only by NextAuth's own route
+    // handlers, and `getServerSession()` inside a Server Component cannot set
+    // cookies, so every rotation performed during a page render was computed
+    // and thrown away. Keycloak's own SSO session stayed alive throughout --
+    // which is why the bounce back through /login never asked for a password.
+    if (isSessionUnrecoverable(token)) {
       return null;
     }
 
     return {
       role,
       sub: token.id as string | undefined,
-      isAccessTokenFresh,
       isActive: (token.isActive as boolean) ?? true,
     };
   } finally {
@@ -77,7 +71,7 @@ function getTopLevelSegment(pathname: string) {
 }
 
 /**
- * Edge RBAC gate — controls which top-level route segments each role can reach.
+ * Edge RBAC gate â€” controls which top-level route segments each role can reach.
  * GlobalAdmin: all | ITOperator: no /settings, /financials
  * FinancialAuditor: no /settings, limited /operations | Employee: /dashboard only
  */
@@ -177,7 +171,7 @@ function buildNoncePolicy(nonce: string) {
   ].join('; ');
 }
 
-/** Main edge proxy — handles auth, RBAC, mobile routing, and account-status gates. */
+/** Main edge proxy â€” handles auth, RBAC, mobile routing, and account-status gates. */
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
   const { pathname } = request.nextUrl;
@@ -198,12 +192,11 @@ export async function proxy(request: NextRequest) {
     }
 
     if (payload && isLoginRoute) {
-      // Only bounce authenticated users away from /login if their token is fresh.
-      // Expired tokens must stay — redirecting would create an infinite loop.
-      if (!payload.isAccessTokenFresh) {
-        return NextResponse.next();
-      }
-
+      // No freshness test guards this any more. The loop it protected against
+      // was only reachable while the gate above could reject a session that
+      // `getToken` had accepted; both now answer from the same flag, so a
+      // payload here means the session is usable and the user does not belong
+      // on the login page.
       const redirectTo = sanitizeRedirectPath(
         request.nextUrl.searchParams.get('redirectTo'),
         DEFAULT_POST_LOGIN_REDIRECT
@@ -237,7 +230,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
 
-      // Employees don't have a dashboard — send them to /my-assets.
+      // Employees don't have a dashboard â€” send them to /my-assets.
       if (
         payload.role === 'Employee' &&
         (pathname === '/' ||
