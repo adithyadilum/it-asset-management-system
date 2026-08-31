@@ -10,6 +10,7 @@
  *                               fields the asset edit form treats as editable
  *   models.technical_details    one value per modelSpecs field, per model
  *   assets.instance_attributes  one value per assetTracking field, per unit
+ *   assets.salvage_value        the expected residual, as a share of cost
  *   system_audit_logs           a per-asset timeline
  *
  * The keys are deliberately the exact `fieldName` strings from the category
@@ -1181,6 +1182,40 @@ const MODEL_SPECS: Record<string, Record<string, string | number | boolean>> = {
   },
 };
 
+/**
+ * Expected residual value at end of life, as a share of purchase cost.
+ *
+ * Every asset had this NULL, which the depreciation helper reads as zero. Two
+ * things followed: the Salvage & Write-Offs chart had nothing to plot for
+ * "expected" and drew a flat line against real realised figures, and every
+ * asset depreciated all the way to zero, which no finance team would book.
+ *
+ * Rates are per asset class because residuals genuinely differ -- office
+ * furniture holds value far better than a printer. Software is 0: a lapsed
+ * licence has no resale value, and software is not depreciated here anyway.
+ */
+const SALVAGE_PCT_BY_CATEGORY: Record<string, number> = {
+  // Infrastructure holds value best of the hardware.
+  'Rack server': 12,
+  'Network Switch': 12,
+  'Network Storage': 12,
+  Firewall: 12,
+  // End-user hardware.
+  Laptop: 10,
+  Desktop: 10,
+  Tablet: 10,
+  Monitor: 10,
+  'Docking Station': 10,
+};
+
+/** Fallback by pillar for anything not named above. */
+const SALVAGE_PCT_BY_PILLAR: Record<string, number> = {
+  Hardware: 10,
+  'Office Electronics': 8,
+  'Office Furniture': 15,
+  Software: 0,
+};
+
 class DryRun extends Error {}
 const summary: string[] = [];
 
@@ -1300,7 +1335,59 @@ async function run() {
         `asset instance attributes: ${attrWrites}/${assets.length} written`
       );
 
-      // ── 4. Asset history ──────────────────────────────────────────────────
+      // ── 4. Expected salvage value ─────────────────────────────────────────
+      let salvageWrites = 0;
+      let salvageTotal = 0;
+      const salvageRows = await tx<
+        {
+          id: string;
+          pillar: string;
+          cat: string;
+          cost: string | null;
+          rate: string | null;
+        }[]
+      >`
+        SELECT a.id, c.pillar, c.name AS cat,
+               p.total_cost AS cost, p.exchange_rate AS rate
+        FROM assets a
+        JOIN models m ON m.id = a.model_id
+        JOIN categories c ON c.id = m.category_id
+        LEFT JOIN asset_purchases p ON p.asset_id = a.id
+        ORDER BY a.asset_tag`;
+
+      for (const row of salvageRows) {
+        const basePct =
+          SALVAGE_PCT_BY_CATEGORY[row.cat] ??
+          SALVAGE_PCT_BY_PILLAR[row.pillar] ??
+          10;
+
+        // Jitter so the chart shows a spread rather than one flat ratio, and
+        // so realised figures land both above and below the forecast.
+        const pct =
+          basePct === 0 ? 0 : Math.max(2, basePct + (rand() * 3 - 1.5));
+        const cost = Number(row.cost ?? 0) * Number((row.rate ?? 1) || 1);
+        const salvage = Math.round((cost * pct) / 100);
+        salvageTotal += salvage;
+
+        await tx`
+          UPDATE assets SET salvage_value = ${salvage.toFixed(2)}
+          WHERE id = ${row.id}`;
+        salvageWrites += 1;
+      }
+      summary.push(
+        `expected salvage: ${salvageWrites}/${salvageRows.length} assets written, ` +
+          `LKR ${salvageTotal.toLocaleString('en-US')} total residual`
+      );
+
+      const [{ n: disposedWithExpected }] = await tx<{ n: number }[]>`
+        SELECT count(*)::int AS n
+        FROM asset_disposals d JOIN assets a ON a.id = d.asset_id
+        WHERE a.salvage_value IS NOT NULL AND a.salvage_value::numeric > 0`;
+      summary.push(
+        `  disposals now carrying an expected figure: ${disposedWithExpected}`
+      );
+
+      // ── 5. Asset history ──────────────────────────────────────────────────
       // Only rows this script owns are cleared. Anything the running app
       // recorded against an asset -- a real assignment, a real repair -- is
       // left alone, so a re-run does not erase genuine activity.
