@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import { categories, locations, vendors, customStatuses } from '@/db/schema';
-import { canManageAssets } from '@/lib/auth/roles';
+import { canViewAssetRegistry } from '@/lib/auth/roles';
 import { logAuditAction } from '@/lib/audit';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { reportPreviewFiltersSchema } from '@/lib/validations/standard-reports';
@@ -29,7 +29,7 @@ import { fetchTcoOverview } from './standard-reports/fetch-tco-overview';
 export async function getStandardReportsFilterOptions() {
   const actionTimer = startLatencyTimer();
 
-  await enforceActionAccess(canManageAssets);
+  await enforceActionAccess(canViewAssetRegistry);
 
   try {
     const [dbLocations, dbCustomStatuses, dbCategories, dbVendors] =
@@ -156,8 +156,10 @@ export async function fetchReportPreview(
     throw new Error('Unauthorized: Please log in.');
   }
 
-  const allowedRoles = ['GlobalAdmin', 'ITOperator', 'FinancialAuditor'];
-  if (!allowedRoles.includes(currentUser.role)) {
+  // Was a hardcoded role list identical to `canViewAssetRegistry`. Keeping a
+  // second copy is what let the page-load guards drift to a stricter rule than
+  // the one that actually generates the report.
+  if (!canViewAssetRegistry(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to generate reports.'
     );
