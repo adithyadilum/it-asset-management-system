@@ -35,7 +35,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@upstash/qstash": "^2.11.3",
     "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.38.0",
+    "@upstash/redis": "^1.38.3",
     "@vercel/blob": "^2.6.1",
     "bufferutil": "^4.1.0",
     "class-variance-authority": "^0.7.1",
