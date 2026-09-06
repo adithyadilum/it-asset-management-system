@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/actions/auth';
+import { SESSION_EXPIRED_PATH } from '@/lib/auth/auth-redirect';
 
 /**
  * A guard, not a view: it either renders its children or redirects, so there is
@@ -18,7 +19,7 @@ export default async function FinancialsLayout({
 
   // If not logged in, bounce to login
   if (!user) {
-    redirect('/login');
+    redirect(SESSION_EXPIRED_PATH);
   }
 
   // Strict RBAC Guard: Only GlobalAdmin and FinancialAuditor can access

@@ -29,6 +29,8 @@ const NO_PRINCIPAL_EXEMPTIONS: Record<string, string> = {
     'Pre-authentication polling for a pairing token; returns only a boolean.',
   'auth/mobile-exchange/route.ts':
     'Pre-authentication pairing claim; re-checks the account against the database itself.',
+  'auth/session-expired/route.ts':
+    'Post-authentication teardown; reads only cookie names to delete and grants nothing.',
   'health/live/route.ts': 'Unauthenticated liveness probe.',
   'health/ready/route.ts': 'Unauthenticated readiness probe.',
   'qstash/cron/route.ts': 'Authenticated by QStash signature verification.',

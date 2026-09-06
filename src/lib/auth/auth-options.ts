@@ -82,6 +82,27 @@ function uuidToLockKey(uuid: string): bigint {
  */
 const KEYCLOAK_REFRESH_TIMEOUT_MS = 8_000;
 
+/**
+ * Drops the stored refresh token once Keycloak has positively rejected it.
+ *
+ * Runs outside the transaction in `refreshAccessToken`, which has already
+ * rolled back by the time the catch block calls this. Deleting the row is the
+ * only durable record of the rejection available here -- the JWT field that
+ * carries it cannot be written back to the cookie from a Server Component --
+ * and it is the same signal `setUserActiveStatus` uses to end a session.
+ */
+async function forgetRefreshToken(userId: string): Promise<void> {
+  try {
+    await db
+      .delete(userRefreshTokens)
+      .where(eq(userRefreshTokens.userId, userId));
+  } catch (error) {
+    // Non-fatal: the session still ends for this request, it just costs one
+    // more rejected Keycloak call to rediscover that next time.
+    console.error('[AUTH] Failed to clear the rejected refresh token', error);
+  }
+}
+
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   const userId = token.id as string;
 
@@ -107,11 +128,29 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         .where(eq(userRefreshTokens.userId, userId))
         .limit(1);
 
+      // The stored row is the authoritative record that a refreshable Keycloak
+      // session still exists. It is deleted the moment Keycloak rejects the
+      // refresh token (see the catch below) or an admin deactivates the
+      // account, so its absence means the session is over.
+      //
+      // Falling through to the cookie's copy of the token is what kept dead
+      // sessions thrashing: a Server Component cannot write a rotated cookie
+      // back, so the `RefreshAccessTokenError` computed during a page render
+      // was discarded, and the next render re-asked Keycloak for a refresh
+      // token it had already refused -- once per render, indefinitely.
+      if (!stored) {
+        logInfo(
+          `[AUTH] No stored refresh token for user ${userId}; session is over`
+        );
+        return {
+          ...token,
+          error: FATAL_REFRESH_ERROR,
+          refreshRetryAt: undefined,
+        };
+      }
+
       const BUFFER_MS = 60 * 1000; // 60-second pre-expiry buffer
-      if (
-        stored &&
-        stored.accessTokenExpires.getTime() > Date.now() + BUFFER_MS
-      ) {
+      if (stored.accessTokenExpires.getTime() > Date.now() + BUFFER_MS) {
         // Another worker already refreshed — return without hitting Keycloak.
         logInfo(
           `[AUTH] Token already refreshed by peer worker for user ${userId}, skipping Keycloak call`
@@ -131,7 +170,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
       // ── 3. Hit Keycloak — we are the one worker that won the lock ────────
       const refreshTokenToUse =
-        decryptToken(stored?.refreshToken) ?? (token.refreshToken as string);
+        decryptToken(stored.refreshToken) ?? (token.refreshToken as string);
       const url = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
 
       // Timeout is load-bearing, not defensive polish: this call happens
@@ -219,6 +258,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     // else is retried after a short pause -- see `session-liveness.ts` for why
     // a transient failure must not sign the user out.
     if (isFatalRefreshFailure(error)) {
+      await forgetRefreshToken(userId);
+
       return {
         ...token,
         error: FATAL_REFRESH_ERROR,

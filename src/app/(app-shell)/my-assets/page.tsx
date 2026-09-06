@@ -19,6 +19,14 @@ import { AppWindow } from 'lucide-react';
 import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
 import { formatAssetName } from '@/lib/asset-name';
 
+/**
+ * No instant shell is possible here: the `(app-shell)` layout above blocks on
+ * `connection()` to read the session, so nothing on this route can be
+ * prerendered. Without this Next reports "Could not validate `instant`" on
+ * every visit — the layout's config does not cascade to pages.
+ */
+export const instant = false;
+
 async function MyAssetsPageContent() {
   const user = await requirePageAuth();
 

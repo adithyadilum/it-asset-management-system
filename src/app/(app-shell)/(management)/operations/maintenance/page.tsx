@@ -4,6 +4,14 @@ import { MaintenanceShell } from '@/components/features/maintenance/maintenance-
 import { MaintenanceErrorBoundary } from '@/components/features/maintenance/maintenance-error-boundary';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 
+/**
+ * No instant shell is possible here: the `(app-shell)` layout above blocks on
+ * `connection()` to read the session, so nothing on this route can be
+ * prerendered. Without this Next reports "Could not validate `instant`" on
+ * every visit — the layout's config does not cascade to pages.
+ */
+export const instant = false;
+
 async function MaintenanceAndRepairsPageContent() {
   const user = await requirePageAuth();
 

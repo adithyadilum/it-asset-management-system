@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
+import { SESSION_EXPIRED_PATH } from '@/lib/auth/auth-redirect';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { TopHeader } from '@/components/layout/top-header';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -20,6 +21,13 @@ import { CurrencyProvider } from '@/components/providers/currency-provider';
  * Renamed from `unstable_instant` in Next 16.3 — the old name is silently
  * ignored rather than rejected, which is why the warning came back after the
  * version bump.
+ *
+ * This does NOT cascade. Next only reads `instant` off the segment it is
+ * looking at, and when it reaches a page that declares nothing it falls back to
+ * validating by default — so `export const instant = false` is repeated on
+ * every page beneath this layout. What the export does do here is let this
+ * segment block on `connection()`, which is why it cannot be replaced with the
+ * object form (`{ unstable_disableValidation: true }`) that would cascade.
  */
 export const instant = false;
 
@@ -31,7 +39,10 @@ export default async function AppShellLayout({
   const user = await getAuthenticatedUser();
 
   if (!user) {
-    redirect('/login');
+    // Not `/login`: the proxy reads liveness from the session cookie, which
+    // this render cannot clear, so it would bounce straight back here. See
+    // `SESSION_EXPIRED_PATH`.
+    redirect(SESSION_EXPIRED_PATH);
   }
 
   const cookieStore = await cookies();

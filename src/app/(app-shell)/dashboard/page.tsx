@@ -19,6 +19,14 @@ import { GlobalAdminDashboardView } from '@/components/features/dashboard/global
 import { ITOperatorDashboardView } from '@/components/features/dashboard/it-operator/it-operator-dashboard-view';
 import { FinancialAuditorDashboardView } from '@/components/features/dashboard/financial-auditor/financial-auditor-dashboard-view';
 
+/**
+ * No instant shell is possible here: the `(app-shell)` layout above blocks on
+ * `connection()` to read the session, so nothing on this route can be
+ * prerendered. Without this Next reports "Could not validate `instant`" on
+ * every visit — the layout's config does not cascade to pages.
+ */
+export const instant = false;
+
 async function DashboardPageContent() {
   const user = await getAuthenticatedUser();
 
