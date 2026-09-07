@@ -5,6 +5,7 @@ import { cache } from 'react';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 
+import { SESSION_EXPIRED_PATH } from '@/lib/auth/auth-redirect';
 import { MasterDataManagementClient } from '@/components/features/master-data/master-data-management-client';
 import { MasterDataPanels } from '@/components/features/master-data/master-data-panels';
 import { db } from '@/db';
@@ -21,6 +22,14 @@ import {
   vendors,
 } from '@/db/schema';
 import { authOptions } from '@/lib/auth/auth-options';
+
+/**
+ * No instant shell is possible here: the `(app-shell)` layout above blocks on
+ * `connection()` to read the session, so nothing on this route can be
+ * prerendered. Without this Next reports "Could not validate `instant`" on
+ * every visit — the layout's config does not cascade to pages.
+ */
+export const instant = false;
 
 type MasterDataTabId =
   | 'locations'
@@ -519,7 +528,7 @@ async function assertMasterDataPageAccess() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
-    redirect('/login');
+    redirect(SESSION_EXPIRED_PATH);
   }
 
   if (session.user.role !== 'GlobalAdmin') {

@@ -4,6 +4,14 @@ import { requirePageAuth } from '@/lib/auth/page-guard';
 import { AlertsSettingsClient } from '@/components/features/settings/alerts/alerts-settings-client';
 import { getAlertsSettingsBootstrap } from '@/actions/notifications';
 
+/**
+ * No instant shell is possible here: the `(app-shell)` layout above blocks on
+ * `connection()` to read the session, so nothing on this route can be
+ * prerendered. Without this Next reports "Could not validate `instant`" on
+ * every visit — the layout's config does not cascade to pages.
+ */
+export const instant = false;
+
 async function AlertsPageContent() {
   await requirePageAuth(
     (role) => role === 'GlobalAdmin' || role === 'ITOperator'

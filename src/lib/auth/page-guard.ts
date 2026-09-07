@@ -2,11 +2,13 @@ import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/actions/auth';
 import type { AuthenticatedUser } from '@/actions/auth';
 import type { UserRole } from '@/types/auth';
+import { SESSION_EXPIRED_PATH } from '@/lib/auth/auth-redirect';
 
 /**
  * Server-side page guard. Call at the top of any async Server Component page.
  *
- * - Redirects to /login if the user is not authenticated.
+ * - Redirects to /api/auth/session-expired -- which clears the session cookie
+ *   and forwards to /login -- if the user is not authenticated.
  * - Redirects to /403 if `canAccess` is provided and returns false for the user's role.
  * - Returns the authenticated user so it can be used by the page component.
  *
@@ -28,7 +30,7 @@ export async function requirePageAuth(
   const user = await getAuthenticatedUser();
 
   if (!user) {
-    redirect('/login');
+    redirect(SESSION_EXPIRED_PATH);
   }
 
   if (canAccess && !canAccess(user.role)) {

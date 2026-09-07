@@ -19,6 +19,14 @@ import {
   users,
 } from '@/db/schema';
 
+/**
+ * No instant shell is possible here: the `(app-shell)` layout above blocks on
+ * `connection()` to read the session, so nothing on this route can be
+ * prerendered. Without this Next reports "Could not validate `instant`" on
+ * every visit — the layout's config does not cascade to pages.
+ */
+export const instant = false;
+
 type SandboxAssetCard = {
   assetType: string;
   name: string;

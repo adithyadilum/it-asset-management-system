@@ -8,6 +8,14 @@ import {
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { canManageAssets } from '@/lib/auth/roles';
 
+/**
+ * No instant shell is possible here: the `(app-shell)` layout above blocks on
+ * `connection()` to read the session, so nothing on this route can be
+ * prerendered. Without this Next reports "Could not validate `instant`" on
+ * every visit — the layout's config does not cascade to pages.
+ */
+export const instant = false;
+
 function serializeDatesForClient<T>(value: T): T {
   if (value instanceof Date) {
     return value.toISOString() as T;
