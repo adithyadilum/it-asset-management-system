@@ -173,10 +173,14 @@ export function ExecuteDisposalDialog({
   const reasonOptions = REASON_OPTIONS[categoryType];
   const methodOptions = METHOD_OPTIONS[categoryType];
 
-  // Only electronics hold data, so only they need the wipe confirmed. Making
-  // it optional everywhere would drop the sanitisation record for laptops and
-  // phones; making it mandatory everywhere blocks disposing a chair.
-  const requiresDataWipe = categoryType === 'electronics';
+  // Only data-bearing devices need the wipe confirmed. A UPS, battery, printer,
+  // projector, or router is electronic but holds no user data — so we check the
+  // actual category string rather than the broad categoryType bucket.
+  const requiresDataWipe = isBulk
+    ? false // bulk spans mixed categories; treat wipe as optional
+    : /\b(laptop|macbook|phone|mobile|tablet|computer|desktop|server|workstation)\b/.test(
+        singleCategory.toLowerCase().trim()
+      );
 
   const expectedConfirmText = isBulk
     ? `DISPOSE ${selectedAssets.length} ASSETS`
@@ -408,29 +412,25 @@ export function ExecuteDisposalDialog({
             </div>
 
             <div className="flex flex-col gap-4">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="data-wipe"
-                  checked={dataWiped}
-                  onCheckedChange={(checked) =>
-                    setDataWiped(checked as boolean)
-                  }
-                  className="mt-0.5 border-primary data-[state=checked]:bg-primary"
-                />
-                <Label
-                  htmlFor="data-wipe"
-                  className="cursor-pointer text-sm font-medium text-foreground"
-                >
-                  Data wiped and factory reset confirmed.{' '}
-                  {requiresDataWipe ? (
+              {requiresDataWipe && (
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="data-wipe"
+                    checked={dataWiped}
+                    onCheckedChange={(checked) =>
+                      setDataWiped(checked as boolean)
+                    }
+                    className="mt-0.5 border-primary data-[state=checked]:bg-primary"
+                  />
+                  <Label
+                    htmlFor="data-wipe"
+                    className="cursor-pointer text-sm font-medium text-foreground"
+                  >
+                    Data wiped and factory reset confirmed.{' '}
                     <span className="text-destructive">*</span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground font-normal">
-                      (If applicable)
-                    </span>
-                  )}
-                </Label>
-              </div>
+                  </Label>
+                </div>
+              )}
               <div className="flex items-start gap-3">
                 <Checkbox
                   id="tags-removed"
