@@ -176,8 +176,11 @@ export function ExecuteDisposalDialog({
   // Only data-bearing devices need the wipe confirmed. A UPS, battery, printer,
   // projector, or router is electronic but holds no user data — so we check the
   // actual category string rather than the broad categoryType bucket.
+  // For bulk disposals the checkbox is hidden and dataWiped stays false;
+  // the server action mirrors this policy and skips the hard requirement for
+  // multi-asset submissions (mixed categories make it impractical to enforce).
   const requiresDataWipe = isBulk
-    ? false // bulk spans mixed categories; treat wipe as optional
+    ? false
     : /\b(laptop|macbook|phone|mobile|tablet|computer|desktop|server|workstation)\b/.test(
         singleCategory.toLowerCase().trim()
       );
