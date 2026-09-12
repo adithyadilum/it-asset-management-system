@@ -81,6 +81,33 @@ export async function executeAssetDisposal(
 
     const validData = parsed.data;
 
+    // ── 3b. Category-aware dataWiped enforcement (single-asset only) ─────────
+    // For a single-asset disposal we can look up the asset's category name and
+    // enforce the wipe confirmation server-side for data-bearing devices.
+    // Bulk disposals span mixed categories so we skip the hard requirement
+    // (the client already mirrors this policy).
+    const DATA_BEARING_REGEX =
+      /\b(laptop|macbook|phone|mobile|tablet|computer|desktop|server|workstation)\b/;
+
+    if (parsedAssetIds.length === 1 && !validData.dataWiped) {
+      const categoryRow = await db
+        .select({ name: categories.name })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .where(eq(assets.id, parsedAssetIds[0]))
+        .limit(1);
+
+      const categoryName = categoryRow[0]?.name ?? '';
+      if (DATA_BEARING_REGEX.test(categoryName.toLowerCase().trim())) {
+        return {
+          success: false,
+          message:
+            'Data wipe confirmation is required for this device type.',
+        };
+      }
+    }
+
     // ── 4. Normalize and deduplicate ─────────────────────────────────────────
     const normalizedDisposalIds = normalizeDisposalIds(validData.disposalIds);
     const normalizedAssetIds = normalizeAssetIds(validData.assetIds);
@@ -336,6 +363,7 @@ export async function executeAssetDisposal(
       'Submitted assets do not match the selected disposal requests.',
       'Failed to update all disposal requests.',
       'Failed to update all assets.',
+      'Data wipe confirmation is required for this device type.',
     ];
 
     if (error instanceof Error && KNOWN_ERRORS.includes(error.message)) {

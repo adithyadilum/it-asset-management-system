@@ -67,12 +67,15 @@ export const executeDisposalSchema = z.object({
       }
     )
     .optional(),
-  disposalMethod: z.enum(['Sold', 'Stolen', 'E-waste', 'Donated'], {
-    message: 'Invalid disposal method selected.',
-  }),
-  dataWiped: z.boolean().refine((val) => val === true, {
-    message: 'You must confirm the data is wiped.',
-  }),
+  disposalMethod: z.enum(
+    ['Sold', 'Stolen', 'E-waste', 'Donated', 'Recycled', 'Disposed'],
+    { message: 'Invalid disposal method selected.' }
+  ),
+  // dataWiped is accepted as-is here; category-aware enforcement
+  // (require true only for data-bearing devices on single-asset disposals)
+  // is applied in the executeAssetDisposal server action after the asset's
+  // category name has been fetched from the database.
+  dataWiped: z.boolean(),
   tagsRemoved: z.boolean().refine((val) => val === true, {
     message: 'You must confirm physical tags are removed.',
   }),
