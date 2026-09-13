@@ -6,7 +6,6 @@ import { Info, Loader2, Search, X } from 'lucide-react';
 import { assignUsersRoleBulk, searchUsers } from '@/actions/roles';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-
 import {
   Dialog,
   DialogContent,
@@ -284,7 +283,7 @@ export function AddUsersToRoleModal({
                     <button
                       key={directoryUser.id}
                       type="button"
-                      className="group flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="group flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={() => addUserToSelection(directoryUser)}
                       disabled={isSubmitting}
                       aria-label={`Add ${directoryUser.name} to selection`}
@@ -382,7 +381,7 @@ export function AddUsersToRoleModal({
                     <button
                       key={selection.id}
                       type="button"
-                      className="group flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="group flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={() => removeUserFromSelection(selection.id)}
                       disabled={isSubmitting}
                       aria-label={`Remove ${selection.name} from selection`}
