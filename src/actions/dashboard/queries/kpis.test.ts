@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { calculateFleetHealthScore, type FleetHealthInputs } from './kpis';
+import {
+  calculateFleetHealthBreakdown,
+  calculateFleetHealthScore,
+  type FleetHealthInputs,
+} from './kpis';
 import {
   FLEET_HEALTH_WEIGHTS,
   TARGET_DEPLOYMENT_RATE,
@@ -230,5 +234,131 @@ describe('calculateFleetHealthScore', () => {
       allocatedSWSeats: 0,
     });
     expect(score).toBe(0);
+  });
+});
+
+describe('calculateFleetHealthBreakdown', () => {
+  const labels = [
+    'Condition',
+    'Deployment',
+    'Return discipline',
+    'Repeat repairs',
+    'Support cover',
+    'Licence use',
+  ];
+
+  it('reports every factor, in a stable order', () => {
+    expect(calculateFleetHealthBreakdown(HEALTHY).map((f) => f.label)).toEqual(
+      labels
+    );
+  });
+
+  it('scores a healthy fleet at 100% on every factor', () => {
+    for (const factor of calculateFleetHealthBreakdown(HEALTHY)) {
+      expect(factor.applicable).toBe(true);
+      expect(factor.actualPct).toBe(100);
+    }
+  });
+
+  it('reconciles with the score it explains', () => {
+    // The dialog puts these percentages next to the headline number, so a
+    // weighted average of the factors has to reproduce it.
+    const inputs: FleetHealthInputs = {
+      ...HEALTHY,
+      outOfActionCount: 10,
+      overdueCount: 17,
+      supportCoveredCount: 70,
+    };
+    const breakdown = calculateFleetHealthBreakdown(inputs);
+    const weighted = breakdown
+      .filter((f) => f.applicable)
+      .reduce((sum, f) => sum + (f.actualPct * f.weightPct) / 100, 0);
+
+    expect(Math.round(weighted)).toBe(calculateFleetHealthScore(inputs));
+  });
+
+  it('renormalises weights to 100 across the applicable factors', () => {
+    const breakdown = calculateFleetHealthBreakdown(HEALTHY);
+    const total = breakdown.reduce((sum, f) => sum + f.weightPct, 0);
+    expect(total).toBe(100);
+  });
+
+  it('redistributes the weight of a factor that does not apply', () => {
+    // No software licences: 'Licence use' drops out and the other five share
+    // its weight, rather than the dialog showing five weights summing to 85%.
+    const noLicences: FleetHealthInputs = {
+      ...HEALTHY,
+      totalSWSeats: 0,
+      allocatedSWSeats: 0,
+    };
+    const breakdown = calculateFleetHealthBreakdown(noLicences);
+
+    const licences = breakdown.find((f) => f.label === 'Licence use');
+    expect(licences).toMatchObject({
+      applicable: false,
+      weightPct: 0,
+      actualPct: 0,
+    });
+
+    const total = breakdown.reduce((sum, f) => sum + f.weightPct, 0);
+    expect(total).toBe(100);
+
+    const condition = breakdown.find((f) => f.label === 'Condition');
+    expect(condition!.weightPct).toBeGreaterThan(
+      Math.round(FLEET_HEALTH_WEIGHTS.condition * 100)
+    );
+  });
+
+  it('always totals exactly 100, whichever factors drop out', () => {
+    // Largest-remainder apportionment: rounding each share on its own makes
+    // the column read 101% as soon as one factor is inapplicable.
+    const optional: (keyof FleetHealthInputs)[] = [
+      'totalSWSeats',
+      'purchasedAssetCount',
+      'openAssignmentCount',
+      'deployableCount',
+    ];
+
+    for (const field of optional) {
+      const breakdown = calculateFleetHealthBreakdown({
+        ...HEALTHY,
+        [field]: 0,
+      });
+      const total = breakdown.reduce((sum, f) => sum + f.weightPct, 0);
+      expect(total, `weights with ${field}=0`).toBe(100);
+    }
+  });
+
+  it('marks an empty fleet N/A throughout rather than scoring it zero', () => {
+    const breakdown = calculateFleetHealthBreakdown({
+      totalActiveAssets: 0,
+      outOfActionCount: 0,
+      deployableCount: 0,
+      assignedCount: 0,
+      openAssignmentCount: 0,
+      overdueCount: 0,
+      highRepairCount: 0,
+      purchasedAssetCount: 0,
+      supportCoveredCount: 0,
+      totalSWSeats: 0,
+      allocatedSWSeats: 0,
+    });
+
+    expect(breakdown).toHaveLength(labels.length);
+    for (const factor of breakdown) {
+      expect(factor.applicable).toBe(false);
+      expect(factor.weightPct).toBe(0);
+      expect(factor.actualPct).toBe(0);
+    }
+  });
+
+  it('rounds an achieved percentage rather than truncating it', () => {
+    // 7 of 100 out of action leaves 93%; a truncating implementation that hit
+    // 92.999... would report 92.
+    const breakdown = calculateFleetHealthBreakdown({
+      ...HEALTHY,
+      outOfActionCount: 7,
+    });
+    expect(breakdown.find((f) => f.label === 'Condition')!.actualPct).toBe(93);
   });
 });

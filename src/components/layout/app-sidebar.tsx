@@ -41,6 +41,8 @@ type NavChild = {
 
 type NavItem = {
   label: string;
+  /** Per-role label overrides. Falls back to `label` if no match. */
+  labelByRole?: Partial<Record<UserRole, string>>;
   icon: LucideIcon;
   href?: string;
   children?: NavChild[];
@@ -117,6 +119,7 @@ const managementItems: NavItem[] = [
   },
   {
     label: 'Reports & Audits',
+    labelByRole: { ITOperator: 'Reports' },
     icon: FileBarChart,
     href: '/reports/standard-reports',
     allowedRoles: ['GlobalAdmin', 'ITOperator', 'FinancialAuditor'],
@@ -267,7 +270,7 @@ function NavGroup({
                 <Icon className="size-4" />
                 {!collapsed ? (
                   <span className="flex-1 truncate text-left font-text-sm-regular text-sm leading-5">
-                    {item.label}
+                    {item.labelByRole?.[userRole] ?? item.label}
                   </span>
                 ) : null}
               </button>
@@ -290,7 +293,7 @@ function NavGroup({
               >
                 <Icon className="size-4" />
                 <span className="flex-1 truncate text-left font-text-sm-regular text-sm leading-5">
-                  {item.label}
+                  {item.labelByRole?.[userRole] ?? item.label}
                 </span>
                 <ChevronDown className="size-4 transition-transform duration-200 ease-out group-data-[state=open]/nav-collapsible:rotate-180" />
               </button>

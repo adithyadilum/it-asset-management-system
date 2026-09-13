@@ -88,8 +88,17 @@ describe('executeDisposalSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid disposalMethod values ('Sold', 'Stolen', 'E-waste', 'Donated')", () => {
-    for (const method of ['Sold', 'Stolen', 'E-waste', 'Donated']) {
+  it('accepts every disposal method the dialog can offer', () => {
+    // 'Recycled' and 'Disposed' are the furniture options; without them the
+    // furniture branch of METHOD_OPTIONS could not be submitted at all.
+    for (const method of [
+      'Sold',
+      'Stolen',
+      'E-waste',
+      'Donated',
+      'Recycled',
+      'Disposed',
+    ]) {
       const result = executeDisposalSchema.safeParse({
         ...validInput,
         disposalMethod: method,
@@ -98,28 +107,25 @@ describe('executeDisposalSchema', () => {
     }
   });
 
-  it('rejects invalid disposalMethod', () => {
+  it('rejects a disposalMethod outside the enum', () => {
     const result = executeDisposalSchema.safeParse({
       ...validInput,
-      disposalMethod: 'Recycled',
+      disposalMethod: 'Incinerated',
     });
     expect(result.success).toBe(false);
   });
 
-  it('requires dataWiped to be true', () => {
-    const result = executeDisposalSchema.safeParse({
-      ...validInput,
-      dataWiped: true,
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('fails when dataWiped is false', () => {
-    const result = executeDisposalSchema.safeParse({
-      ...validInput,
-      dataWiped: false,
-    });
-    expect(result.success).toBe(false);
+  it('accepts dataWiped either way, because only the batch decides', () => {
+    // Enforcement lives in `executeAssetDisposal`, which resolves the category
+    // of every asset being disposed; see its own tests. A blanket rule here
+    // would either block disposing a chair or wave a laptop through.
+    for (const dataWiped of [true, false]) {
+      const result = executeDisposalSchema.safeParse({
+        ...validInput,
+        dataWiped,
+      });
+      expect(result.success).toBe(true);
+    }
   });
 
   it('requires tagsRemoved to be true', () => {
