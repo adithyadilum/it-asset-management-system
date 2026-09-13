@@ -10,6 +10,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -19,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { cn, getInitials } from '@/lib/utils';
 import type { UserRole, RoleUser } from '@/types/auth';
@@ -104,9 +107,10 @@ export function EditUserRoleModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-125 [&>button]:hidden">
-        <div className="p-6">
-          <div className="mb-2 flex items-start justify-between">
+      <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-md [&>button]:hidden">
+        {/* ── Header ── */}
+        <DialogHeader className="flex flex-row items-start justify-between border-b border-border px-6 py-4">
+          <div>
             <DialogTitle
               className={cn(
                 TYPOGRAPHY_CLASSNAMES.textLgSemiBold,
@@ -115,33 +119,36 @@ export function EditUserRoleModal({
             >
               Change User Role
             </DialogTitle>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Close"
-              className="-mr-2 -mt-2 h-8 w-8 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+            <DialogDescription
+              className={cn(
+                'mt-0.5 text-muted-foreground',
+                TYPOGRAPHY_CLASSNAMES.textSmRegular
+              )}
             >
-              <X className="h-5 w-5" />
-            </Button>
+              {user
+                ? `Update the role for ${user.name}.`
+                : 'Select a user to update.'}
+            </DialogDescription>
           </div>
 
-          <DialogDescription
-            className={cn(
-              'mb-6 text-muted-foreground',
-              TYPOGRAPHY_CLASSNAMES.textSmRegular
-            )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Close"
+            className="-mr-2 -mt-2 h-8 w-8 shrink-0 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
           >
-            {user
-              ? `Update the role for ${user.name}.`
-              : 'Select a user to update.'}
-          </DialogDescription>
+            <X className="h-5 w-5" />
+          </Button>
+        </DialogHeader>
 
+        {/* ── Body ── */}
+        <div className="space-y-4 px-6 py-4">
           {user && (
-            <div className="mx-1 mb-6 flex items-center gap-3 rounded-lg border border-border bg-muted/80 p-3">
-              <Avatar className="h-10 w-10 overflow-hidden rounded-full bg-muted">
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-3">
+              <Avatar className="h-10 w-10 overflow-hidden rounded-full">
                 <AvatarFallback
                   className={cn(
                     'rounded-full bg-muted text-foreground',
@@ -172,8 +179,8 @@ export function EditUserRoleModal({
             </div>
           )}
 
-          <div className="space-y-1">
-            <label
+          <div className="space-y-1.5">
+            <Label
               htmlFor="user-role"
               className={cn(
                 'text-foreground',
@@ -181,7 +188,7 @@ export function EditUserRoleModal({
               )}
             >
               Role
-            </label>
+            </Label>
             <Select
               value={selectedRole}
               onValueChange={(val) => setSelectedRole(val as UserRole)}
@@ -200,51 +207,49 @@ export function EditUserRoleModal({
             </Select>
           </div>
 
-          {error ? (
-            <p
-              className={cn(
-                'mt-3 text-red-600',
-                TYPOGRAPHY_CLASSNAMES.textSmMedium
-              )}
-            >
-              {error}
-            </p>
-          ) : null}
-
-          <div className="mt-4 flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              className={cn(
-                'px-6 hover:bg-muted',
-                TYPOGRAPHY_CLASSNAMES.textSmMedium
-              )}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className={cn('px-6', TYPOGRAPHY_CLASSNAMES.textSmMedium)}
-              onClick={handleSubmit}
-              disabled={isSubmitting || !user || isSelf}
-            >
-              {isSubmitting ? 'Updating...' : 'Update'}
-            </Button>
-          </div>
-
           {isSelf && (
             <p
               className={cn(
-                'mt-2 text-right text-muted-foreground',
+                'text-muted-foreground',
                 TYPOGRAPHY_CLASSNAMES.textXsRegular
               )}
             >
               You cannot modify your own role.
             </p>
           )}
+
+          {error && (
+            <p
+              className={cn(
+                'text-destructive',
+                TYPOGRAPHY_CLASSNAMES.textSmMedium
+              )}
+            >
+              {error}
+            </p>
+          )}
         </div>
+
+        {/* ── Footer ── */}
+        <DialogFooter className="flex items-center justify-end gap-2 border-t border-border px-6 py-4 sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+            className="h-9 px-4 bg-secondary border border-border text-secondary-foreground hover:bg-secondary/80 shadow-sm rounded-lg"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !user || isSelf}
+            className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-lg disabled:opacity-50"
+          >
+            {isSubmitting ? 'Updating...' : 'Update Role'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
