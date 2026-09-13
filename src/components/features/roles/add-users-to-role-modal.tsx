@@ -116,8 +116,8 @@ export function AddUsersToRoleModal({
     onOpenChange(open);
   };
 
-  // The server requires at least 2 characters before returning results.
-  const canSearch = normalizedQuery.length >= 2;
+  // The server requires at least 3 characters before returning results.
+  const canSearch = normalizedQuery.length >= 3;
 
   useEffect(() => {
     if (!isOpen || !canSearch) return;
@@ -243,14 +243,14 @@ export function AddUsersToRoleModal({
           </div>
 
           {/* Search results */}
-          {normalizedQuery.length === 1 ? (
+          {normalizedQuery.length > 0 && !canSearch ? (
             <p
               className={cn(
                 'text-muted-foreground',
                 TYPOGRAPHY_CLASSNAMES.textSmRegular
               )}
             >
-              Type at least 2 characters to search.
+              Type at least 3 characters to search.
             </p>
           ) : canSearch ? (
             <div className="rounded-lg border border-border bg-background p-3 shadow-sm">
