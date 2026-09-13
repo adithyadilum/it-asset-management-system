@@ -29,7 +29,7 @@ import {
   OUT_OF_ACTION_STATUSES,
   NON_DEPLOYABLE_STATUSES,
 } from '@/lib/constants/dashboard';
-import type { DashboardKpiMetrics } from '@/types/dashboard';
+import type { DashboardKpiMetrics, FleetHealthFactor } from '@/types/dashboard';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { straightLineNbvSqlFragment } from '@/lib/depreciation';
 
@@ -80,20 +80,10 @@ function ratio(numerator: number, denominator: number): number {
 }
 
 /**
- * A 0-100 composite of six things that each cost money when they slip.
- *
- * Every component is scored so that a well-run fleet can actually reach 1.
- * That was the main problem with the previous version: utilisation demanded
- * 100% of assets be assigned (so holding any spare kit capped the score) and
- * warranty coverage demanded every asset still be under warranty (which no
- * ageing fleet can be, so the ceiling fell every month regardless of what
- * anyone did). Both now measure against a target that good practice can meet.
- *
- * Components with no denominator are dropped and the remaining weights are
- * renormalised, so an organisation with no software licences is not marked
- * down for the seats it does not have.
+ * Builds the raw component array shared by the score and the breakdown.
+ * Extracted so both functions operate on exactly the same data.
  */
-export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
+function buildFleetHealthComponents(inputs: FleetHealthInputs) {
   const {
     totalActiveAssets,
     outOfActionCount,
@@ -108,17 +98,17 @@ export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
     allocatedSWSeats,
   } = inputs;
 
-  const components = [
+  return [
     {
-      // How much of the fleet is usable right now. The most direct health
-      // signal there is, and the one the original score left out.
+      label: 'Condition',
+      // How much of the fleet is usable right now.
       applicable: totalActiveAssets > 0,
       weight: FLEET_HEALTH_WEIGHTS.condition,
       value: 1 - ratio(outOfActionCount, totalActiveAssets),
     },
     {
-      // Idle capital, measured only against serviceable kit and only up to a
-      // realistic target, so a spare pool is not treated as a failure.
+      label: 'Deployment',
+      // Idle capital, measured against a realistic target.
       applicable: deployableCount > 0,
       weight: FLEET_HEALTH_WEIGHTS.deployment,
       value: ratio(
@@ -127,35 +117,52 @@ export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
       ),
     },
     {
-      // Custody risk, now measured against open assignments rather than a
-      // status count from a different table.
+      label: 'Return discipline',
+      // Custody risk: open assignments still within their due date.
       applicable: openAssignmentCount > 0,
       weight: FLEET_HEALTH_WEIGHTS.returns,
       value: 1 - ratio(overdueCount, openAssignmentCount),
     },
     {
-      // Repeat offenders: kit that should be replaced rather than repaired
-      // again.
+      label: 'Repeat repairs',
+      // Assets with fewer than the high-maintenance threshold.
       applicable: totalActiveAssets > 0,
       weight: FLEET_HEALTH_WEIGHTS.repairs,
       value: 1 - ratio(highRepairCount, totalActiveAssets),
     },
     {
-      // Unplanned cost exposure. An asset past its useful life counts as
-      // covered: replacing it is already the plan, so the absence of a
-      // warranty on it is not a risk. What this catches is a young asset with
-      // no cover, which is the case that actually costs money.
+      label: 'Support cover',
+      // Assets under warranty or already past useful life.
       applicable: purchasedAssetCount > 0,
       weight: FLEET_HEALTH_WEIGHTS.support,
       value: ratio(supportCoveredCount, purchasedAssetCount),
     },
     {
-      // Seats paid for and not used.
+      label: 'Licence use',
+      // Purchased software seats allocated to a user.
       applicable: totalSWSeats > 0,
       weight: FLEET_HEALTH_WEIGHTS.licences,
       value: ratio(allocatedSWSeats, totalSWSeats),
     },
   ];
+}
+
+/**
+ * A 0-100 composite of six things that each cost money when they slip.
+ *
+ * Every component is scored so that a well-run fleet can actually reach 1.
+ * That was the main problem with the previous version: utilisation demanded
+ * 100% of assets be assigned (so holding any spare kit capped the score) and
+ * warranty coverage demanded every asset still be under warranty (which no
+ * ageing fleet can be, so the ceiling fell every month regardless of what
+ * anyone did). Both now measure against a target that good practice can meet.
+ *
+ * Components with no denominator are dropped and the remaining weights are
+ * renormalised, so an organisation with no software licences is not marked
+ * down for the seats it does not have.
+ */
+export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
+  const components = buildFleetHealthComponents(inputs);
 
   const applicableComponents = components.filter((c) => c.applicable);
   if (applicableComponents.length === 0) {
@@ -172,6 +179,75 @@ export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
   );
 
   return Math.round((weightedSum / totalWeight) * 100);
+}
+
+/**
+ * Per-factor detail behind the Fleet Health Score dialog.
+ *
+ * The weights reported here are the renormalised ones, matching what
+ * `calculateFleetHealthScore` actually divides by, not the configured
+ * constants. On a fleet with no software licences the configured weights of
+ * the applicable factors sum to 85%, so printing those beside a score computed
+ * from the remaining five renormalised to 100% gave a dialog that could not
+ * explain its own number. Inapplicable factors report a weight of 0 and are
+ * rendered as N/A.
+ */
+export function calculateFleetHealthBreakdown(
+  inputs: FleetHealthInputs
+): FleetHealthFactor[] {
+  const components = buildFleetHealthComponents(inputs);
+
+  const applicableComponents = components.filter((c) => c.applicable);
+  const totalWeight = applicableComponents.reduce(
+    (sum, c) => sum + c.weight,
+    0
+  );
+
+  const weightPctByLabel = apportionWeights(applicableComponents, totalWeight);
+
+  return components.map((c) => ({
+    label: c.label,
+    weightPct: weightPctByLabel.get(c.label) ?? 0,
+    actualPct: c.applicable ? Math.round(c.value * 100) : 0,
+    applicable: c.applicable,
+  }));
+}
+
+/**
+ * Splits 100 points across the applicable factors by largest remainder.
+ *
+ * Rounding each share independently does not add up: drop the licences factor
+ * and the other five round to 101 between them, which is a visible defect in a
+ * dialog whose whole job is to show how the score is composed. Largest
+ * remainder hands the leftover points to the factors that lost the most to
+ * rounding, so the column always totals exactly 100.
+ */
+function apportionWeights(
+  applicable: readonly { label: string; weight: number }[],
+  totalWeight: number
+): Map<string, number> {
+  const result = new Map<string, number>();
+  if (applicable.length === 0 || totalWeight <= 0) return result;
+
+  const exact = applicable.map((c) => ({
+    label: c.label,
+    share: (c.weight / totalWeight) * 100,
+  }));
+
+  let assigned = 0;
+  for (const entry of exact) {
+    const floored = Math.floor(entry.share);
+    result.set(entry.label, floored);
+    assigned += floored;
+  }
+
+  const byRemainder = [...exact].sort((a, b) => (b.share % 1) - (a.share % 1));
+  for (let i = 0; i < 100 - assigned; i++) {
+    const entry = byRemainder[i % byRemainder.length];
+    result.set(entry.label, (result.get(entry.label) ?? 0) + 1);
+  }
+
+  return result;
 }
 
 export const getCachedDashboardKpiMetrics = unstable_cache(
@@ -510,6 +586,19 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       netBookValue,
       fleetHealthScore,
       fleetHealthLabel: getFleetHealthLabel(fleetHealthScore),
+      fleetHealthBreakdown: calculateFleetHealthBreakdown({
+        totalActiveAssets,
+        outOfActionCount,
+        deployableCount,
+        assignedCount: assignedCountHealth,
+        openAssignmentCount,
+        overdueCount: overdueCountHealth,
+        highRepairCount,
+        purchasedAssetCount,
+        supportCoveredCount,
+        totalSWSeats,
+        allocatedSWSeats,
+      }),
       inactiveSoftwareSeats,
       inactiveSoftwareCostLeak,
       warrantyExpiries30Days,

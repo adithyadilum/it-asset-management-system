@@ -67,12 +67,16 @@ export const executeDisposalSchema = z.object({
       }
     )
     .optional(),
-  disposalMethod: z.enum(['Sold', 'Stolen', 'E-waste', 'Donated'], {
-    message: 'Invalid disposal method selected.',
-  }),
-  dataWiped: z.boolean().refine((val) => val === true, {
-    message: 'You must confirm the data is wiped.',
-  }),
+  disposalMethod: z.enum(
+    ['Sold', 'Stolen', 'E-waste', 'Donated', 'Recycled', 'Disposed'],
+    { message: 'Invalid disposal method selected.' }
+  ),
+  // Accepted either way here. Whether `false` is allowed depends on what is
+  // being disposed, and only the database knows that, so `executeAssetDisposal`
+  // enforces it against the categories of every asset in the batch once they
+  // have been resolved. A blanket `=== true` here would block disposing a
+  // chair; no check at all would let a laptop through unrecorded.
+  dataWiped: z.boolean(),
   tagsRemoved: z.boolean().refine((val) => val === true, {
     message: 'You must confirm physical tags are removed.',
   }),

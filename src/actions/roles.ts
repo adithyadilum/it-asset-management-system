@@ -67,7 +67,7 @@ export async function getRolesPageData(selectedRole: UserRole) {
   return { usersInRole, roleCountsRows };
 }
 
-/** Searches the user directory by name or email. Capped at 100 chars, min 2 chars. */
+/** Searches the user directory by name or email. Capped at 100 chars, min 3 chars. */
 export async function searchUsers(query: string) {
   const actionTimer = startLatencyTimer();
 
@@ -78,7 +78,7 @@ export async function searchUsers(query: string) {
   requireAccess(currentUser, isGlobalAdmin);
 
   const trimmedQuery = query.trim().slice(0, 100);
-  if (trimmedQuery.length < 2) return [];
+  if (trimmedQuery.length < 3) return [];
 
   try {
     const queryTimer = startLatencyTimer();

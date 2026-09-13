@@ -21,6 +21,10 @@ describe('KpiMetricsRow', () => {
           )
             return 5;
           if (prop === 'totalAssetValue') return 50000;
+          // The catch-all below answers every field with a number, which is
+          // not a shape this one can take. Left as 1200 it made the breakdown
+          // look present but unmappable.
+          if (prop === 'fleetHealthBreakdown') return undefined;
           return 1200;
         },
       }

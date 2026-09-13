@@ -77,7 +77,7 @@ describe('RemoveUserModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove User' }));
 
     expect(
       screen.getByRole('button', { name: 'Removing...' })
@@ -104,7 +104,7 @@ describe('RemoveUserModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove User' }));
 
     await waitFor(() => {
       expect(screen.getByText('Failed to remove user')).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('RemoveUserModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove User' }));
 
     await waitFor(() => {
       expect(
