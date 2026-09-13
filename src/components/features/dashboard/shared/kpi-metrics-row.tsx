@@ -261,37 +261,93 @@ export function KpiMetricsRow({
                 .
               </p>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <h4 className="font-semibold text-foreground">
-                  What the score measures
+                  Factor breakdown
                 </h4>
-                <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-                  <li>
-                    <strong>Condition (25%)</strong> &mdash; assets not in
-                    repair, defective or lost.
-                  </li>
-                  <li>
-                    <strong>Deployment (20%)</strong> &mdash; serviceable assets
-                    assigned to a user or location. 85% or above scores full
-                    marks.
-                  </li>
-                  <li>
-                    <strong>Return discipline (15%)</strong> &mdash; open
-                    assignments still within their due date.
-                  </li>
-                  <li>
-                    <strong>Repeat repairs (15%)</strong> &mdash; assets with
-                    fewer than three repair tickets.
-                  </li>
-                  <li>
-                    <strong>Support cover (15%)</strong> &mdash; assets under
-                    warranty, or past their useful life and due for replacement.
-                  </li>
-                  <li>
-                    <strong>Licence use (10%)</strong> &mdash; purchased
-                    software seats allocated to a user.
-                  </li>
-                </ul>
+                {metrics.fleetHealthBreakdown ? (
+                  <div className="space-y-3">
+                    {metrics.fleetHealthBreakdown.map((factor) => (
+                      <div key={factor.label} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span
+                            className={
+                              factor.applicable
+                                ? 'font-medium text-foreground'
+                                : 'text-muted-foreground'
+                            }
+                          >
+                            {factor.label}{' '}
+                            <span className="text-muted-foreground font-normal">
+                              ({factor.weightPct}% weight)
+                            </span>
+                          </span>
+                          <span
+                            className={`font-semibold tabular-nums ${
+                              !factor.applicable
+                                ? 'text-muted-foreground'
+                                : factor.actualPct >= 85
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : factor.actualPct >= 60
+                                    ? 'text-amber-600 dark:text-amber-400'
+                                    : 'text-red-600 dark:text-red-400'
+                            }`}
+                          >
+                            {factor.applicable
+                              ? `${factor.actualPct}%`
+                              : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              !factor.applicable
+                                ? 'bg-muted-foreground/30'
+                                : factor.actualPct >= 85
+                                  ? 'bg-emerald-500'
+                                  : factor.actualPct >= 60
+                                    ? 'bg-amber-500'
+                                    : 'bg-red-500'
+                            }`}
+                            style={{
+                              width: factor.applicable
+                                ? `${factor.actualPct}%`
+                                : '0%',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                    <li>
+                      <strong>Condition (25%)</strong> &mdash; assets not in
+                      repair, defective or lost.
+                    </li>
+                    <li>
+                      <strong>Deployment (20%)</strong> &mdash; serviceable
+                      assets assigned to a user or location.
+                    </li>
+                    <li>
+                      <strong>Return discipline (15%)</strong> &mdash; open
+                      assignments still within their due date.
+                    </li>
+                    <li>
+                      <strong>Repeat repairs (15%)</strong> &mdash; assets with
+                      fewer than three repair tickets.
+                    </li>
+                    <li>
+                      <strong>Support cover (15%)</strong> &mdash; assets under
+                      warranty, or past their useful life and due for
+                      replacement.
+                    </li>
+                    <li>
+                      <strong>Licence use (10%)</strong> &mdash; purchased
+                      software seats allocated to a user.
+                    </li>
+                  </ul>
+                )}
               </div>
 
               <div className="space-y-2">
