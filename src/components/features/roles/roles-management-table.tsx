@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useTransition } from 'react';
-import { PlusCircle, Trash2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 
@@ -268,13 +268,11 @@ export function RolesManagementTable({
           <Button
             type="button"
             size="sm"
-            className="h-9 gap-2 rounded-lg bg-primary px-4 text-primary-foreground shadow-sm hover:bg-primary/90"
+            className={`flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
             onClick={() => setIsAddModalOpen(true)}
           >
-            <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
-              Add User
-            </span>
+            <Plus className="h-4 w-4" />
+            Add User
           </Button>
         </div>
       )}
