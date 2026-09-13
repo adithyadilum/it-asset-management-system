@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CirclePlus, Info, Loader2, Search, Trash2, X } from 'lucide-react';
+import { Info, Loader2, Search, X } from 'lucide-react';
 
 import { assignUsersRoleBulk, searchUsers } from '@/actions/roles';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -13,12 +13,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { cn, getInitials } from '@/lib/utils';
@@ -285,65 +279,56 @@ export function AddUsersToRoleModal({
                   </p>
                 </div>
               ) : directoryResults.length > 0 ? (
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {directoryResults.map((directoryUser) => (
-                    <div
+                    <button
                       key={directoryUser.id}
-                      className="flex items-center justify-between gap-3 rounded-md px-1 py-1 transition-colors hover:bg-muted/50"
+                      type="button"
+                      className="group flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => addUserToSelection(directoryUser)}
+                      disabled={isSubmitting}
+                      aria-label={`Add ${directoryUser.name} to selection`}
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar className="size-7 rounded-md">
-                          <AvatarFallback
-                            className={cn(
-                              'rounded-md bg-muted text-foreground',
-                              TYPOGRAPHY_CLASSNAMES.textXsMedium
-                            )}
-                          >
-                            {getInitials(directoryUser.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                      <Avatar className="size-7 shrink-0 rounded-md">
+                        <AvatarFallback
+                          className={cn(
+                            'rounded-md bg-muted text-foreground',
+                            TYPOGRAPHY_CLASSNAMES.textXsMedium
+                          )}
+                        >
+                          {getInitials(directoryUser.name)}
+                        </AvatarFallback>
+                      </Avatar>
 
-                        <div className="min-w-0">
-                          <p
-                            className={cn(
-                              'truncate text-foreground',
-                              TYPOGRAPHY_CLASSNAMES.textSmSemiBold
-                            )}
-                          >
-                            {directoryUser.name}
-                          </p>
-                          <p
-                            className={cn(
-                              'truncate text-muted-foreground',
-                              TYPOGRAPHY_CLASSNAMES.textXsRegular
-                            )}
-                          >
-                            {directoryUser.email}
-                          </p>
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cn(
+                            'truncate text-foreground',
+                            TYPOGRAPHY_CLASSNAMES.textSmSemiBold
+                          )}
+                        >
+                          {directoryUser.name}
+                        </p>
+                        <p
+                          className={cn(
+                            'truncate text-muted-foreground',
+                            TYPOGRAPHY_CLASSNAMES.textXsRegular
+                          )}
+                        >
+                          {directoryUser.email}
+                        </p>
                       </div>
 
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              className="shrink-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                              onClick={() => addUserToSelection(directoryUser)}
-                              disabled={isSubmitting}
-                              aria-label={`Add ${directoryUser.name} to selection`}
-                            >
-                              <CirclePlus className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Add {directoryUser.name} to selection
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                      <span
+                        className={cn(
+                          'shrink-0 text-primary opacity-0 transition-opacity group-hover:opacity-100',
+                          TYPOGRAPHY_CLASSNAMES.textXsRegular
+                        )}
+                        aria-hidden
+                      >
+                        + Add
+                      </span>
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -392,67 +377,56 @@ export function AddUsersToRoleModal({
 
             <div className="rounded-lg border border-border bg-muted/50 p-3">
               {mappedSelection.length > 0 ? (
-                <div className="max-h-36 space-y-1 overflow-y-auto pr-1 [scrollbar-color:#64748b_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted">
+                <div className="max-h-36 space-y-0.5 overflow-y-auto pr-1 [scrollbar-color:#64748b_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted">
                   {mappedSelection.map((selection) => (
-                    <div
+                    <button
                       key={selection.id}
-                      className="flex items-center justify-between gap-3 rounded-md px-1 py-1"
+                      type="button"
+                      className="group flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => removeUserFromSelection(selection.id)}
+                      disabled={isSubmitting}
+                      aria-label={`Remove ${selection.name} from selection`}
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar className="size-7 rounded-md">
-                          <AvatarFallback
-                            className={cn(
-                              'rounded-md bg-background text-foreground',
-                              TYPOGRAPHY_CLASSNAMES.textXsMedium
-                            )}
-                          >
-                            {getInitials(selection.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                      <Avatar className="size-7 shrink-0 rounded-md">
+                        <AvatarFallback
+                          className={cn(
+                            'rounded-md bg-background text-foreground',
+                            TYPOGRAPHY_CLASSNAMES.textXsMedium
+                          )}
+                        >
+                          {getInitials(selection.name)}
+                        </AvatarFallback>
+                      </Avatar>
 
-                        <div className="min-w-0">
-                          <p
-                            className={cn(
-                              'truncate text-foreground',
-                              TYPOGRAPHY_CLASSNAMES.textSmSemiBold
-                            )}
-                          >
-                            {selection.name}
-                          </p>
-                          <p
-                            className={cn(
-                              'truncate text-muted-foreground',
-                              TYPOGRAPHY_CLASSNAMES.textXsRegular
-                            )}
-                          >
-                            {selection.email}
-                          </p>
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cn(
+                            'truncate text-foreground transition-colors group-hover:text-destructive',
+                            TYPOGRAPHY_CLASSNAMES.textSmSemiBold
+                          )}
+                        >
+                          {selection.name}
+                        </p>
+                        <p
+                          className={cn(
+                            'truncate text-muted-foreground',
+                            TYPOGRAPHY_CLASSNAMES.textXsRegular
+                          )}
+                        >
+                          {selection.email}
+                        </p>
                       </div>
 
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() =>
-                                removeUserFromSelection(selection.id)
-                              }
-                              disabled={isSubmitting}
-                              aria-label={`Remove ${selection.name} from selection`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Remove {selection.name} from selection
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                      <span
+                        className={cn(
+                          'shrink-0 text-destructive opacity-0 transition-opacity group-hover:opacity-100',
+                          TYPOGRAPHY_CLASSNAMES.textXsRegular
+                        )}
+                        aria-hidden
+                      >
+                        Remove
+                      </span>
+                    </button>
                   ))}
                 </div>
               ) : (
