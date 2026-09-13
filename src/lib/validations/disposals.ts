@@ -71,10 +71,11 @@ export const executeDisposalSchema = z.object({
     ['Sold', 'Stolen', 'E-waste', 'Donated', 'Recycled', 'Disposed'],
     { message: 'Invalid disposal method selected.' }
   ),
-  // dataWiped is accepted as-is here; category-aware enforcement
-  // (require true only for data-bearing devices on single-asset disposals)
-  // is applied in the executeAssetDisposal server action after the asset's
-  // category name has been fetched from the database.
+  // Accepted either way here. Whether `false` is allowed depends on what is
+  // being disposed, and only the database knows that, so `executeAssetDisposal`
+  // enforces it against the categories of every asset in the batch once they
+  // have been resolved. A blanket `=== true` here would block disposing a
+  // chair; no check at all would let a laptop through unrecorded.
   dataWiped: z.boolean(),
   tagsRemoved: z.boolean().refine((val) => val === true, {
     message: 'You must confirm physical tags are removed.',

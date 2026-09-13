@@ -265,7 +265,10 @@ export function KpiMetricsRow({
                 <h4 className="font-semibold text-foreground">
                   Factor breakdown
                 </h4>
-                {metrics.fleetHealthBreakdown ? (
+                {/* Array.isArray, not truthiness: this arrives from a server
+                    payload, and anything that is present but not a list should
+                    fall back to the static description rather than throw. */}
+                {Array.isArray(metrics.fleetHealthBreakdown) ? (
                   <div className="space-y-3">
                     {metrics.fleetHealthBreakdown.map((factor) => (
                       <div key={factor.label} className="space-y-1">
@@ -293,9 +296,7 @@ export function KpiMetricsRow({
                                     : 'text-red-600 dark:text-red-400'
                             }`}
                           >
-                            {factor.applicable
-                              ? `${factor.actualPct}%`
-                              : 'N/A'}
+                            {factor.applicable ? `${factor.actualPct}%` : 'N/A'}
                           </span>
                         </div>
                         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">

@@ -117,7 +117,11 @@ export interface AssetsByCategoryItem {
 export interface FleetHealthFactor {
   /** Human-readable label for this factor. */
   label: string;
-  /** Configured weight as a percentage (e.g. 25 means 25%). */
+  /**
+   * Weight as a percentage of the score actually computed (e.g. 25 means
+   * 25%). Renormalised across the applicable factors, so these sum to 100 and
+   * reconcile with `fleetHealthScore`; 0 when the factor did not apply.
+   */
   weightPct: number;
   /** Actual achieved score for this factor as a percentage (0–100). */
   actualPct: number;

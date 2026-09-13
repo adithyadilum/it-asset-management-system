@@ -16,6 +16,7 @@ import {
 
 import { executeAssetDisposal } from '@/actions/disposals/execute';
 import { uploadDisposalReceipt } from '@/actions/disposals/upload-receipt';
+import { requiresDataWipeConfirmation } from '@/lib/disposals/data-bearing';
 import { formatCurrencySymbol, SUMMARY_CURRENCY } from '@/lib/currency';
 import { FileUploadZone } from '@/components/shared/file-upload-zone';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -173,17 +174,16 @@ export function ExecuteDisposalDialog({
   const reasonOptions = REASON_OPTIONS[categoryType];
   const methodOptions = METHOD_OPTIONS[categoryType];
 
-  // Only data-bearing devices need the wipe confirmed. A UPS, battery, printer,
-  // projector, or router is electronic but holds no user data — so we check the
-  // actual category string rather than the broad categoryType bucket.
-  // For bulk disposals the checkbox is hidden and dataWiped stays false;
-  // the server action mirrors this policy and skips the hard requirement for
-  // multi-asset submissions (mixed categories make it impractical to enforce).
+  // Only data-bearing devices need the wipe confirmed — a chair, monitor or UPS
+  // holds nothing to sanitise — but this component often cannot tell which it
+  // has: `PendingDisposalsGrid` opens the dialog without a category, and a bulk
+  // selection has no single one. `requiresDataWipeConfirmation` answers unknown
+  // with "yes", and `executeAssetDisposal` decides for real against the
+  // database, so the worst this does is ask for a confirmation the server would
+  // have waived.
   const requiresDataWipe = isBulk
-    ? false
-    : /\b(laptop|macbook|phone|mobile|tablet|computer|desktop|server|workstation)\b/.test(
-        singleCategory.toLowerCase().trim()
-      );
+    ? true
+    : requiresDataWipeConfirmation(singleCategory);
 
   const expectedConfirmText = isBulk
     ? `DISPOSE ${selectedAssets.length} ASSETS`
@@ -415,25 +415,34 @@ export function ExecuteDisposalDialog({
             </div>
 
             <div className="flex flex-col gap-4">
-              {requiresDataWipe && (
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    id="data-wipe"
-                    checked={dataWiped}
-                    onCheckedChange={(checked) =>
-                      setDataWiped(checked as boolean)
-                    }
-                    className="mt-0.5 border-primary data-[state=checked]:bg-primary"
-                  />
-                  <Label
-                    htmlFor="data-wipe"
-                    className="cursor-pointer text-sm font-medium text-foreground"
-                  >
-                    Data wiped and factory reset confirmed.{' '}
+              {/* Always rendered, conditionally required. Hiding it whenever
+                  the category looked harmless left no way to confirm a wipe
+                  the server went on to demand -- the pending-disposals grid
+                  passes no category at all, so every disposal started from
+                  there was a dead end. */}
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="data-wipe"
+                  checked={dataWiped}
+                  onCheckedChange={(checked) =>
+                    setDataWiped(checked as boolean)
+                  }
+                  className="mt-0.5 border-primary data-[state=checked]:bg-primary"
+                />
+                <Label
+                  htmlFor="data-wipe"
+                  className="cursor-pointer text-sm font-medium text-foreground"
+                >
+                  Data wiped and factory reset confirmed.{' '}
+                  {requiresDataWipe ? (
                     <span className="text-destructive">*</span>
-                  </Label>
-                </div>
-              )}
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      (If applicable)
+                    </span>
+                  )}
+                </Label>
+              </div>
               <div className="flex items-start gap-3">
                 <Checkbox
                   id="tags-removed"

@@ -182,8 +182,15 @@ export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
 }
 
 /**
- * Returns per-factor details for the Fleet Health Score dialog.
- * Each factor shows its configured weight and actual achieved percentage.
+ * Per-factor detail behind the Fleet Health Score dialog.
+ *
+ * The weights reported here are the renormalised ones, matching what
+ * `calculateFleetHealthScore` actually divides by, not the configured
+ * constants. On a fleet with no software licences the configured weights of
+ * the applicable factors sum to 85%, so printing those beside a score computed
+ * from the remaining five renormalised to 100% gave a dialog that could not
+ * explain its own number. Inapplicable factors report a weight of 0 and are
+ * rendered as N/A.
  */
 export function calculateFleetHealthBreakdown(
   inputs: FleetHealthInputs
@@ -191,17 +198,56 @@ export function calculateFleetHealthBreakdown(
   const components = buildFleetHealthComponents(inputs);
 
   const applicableComponents = components.filter((c) => c.applicable);
-  const totalWeight =
-    applicableComponents.length > 0
-      ? applicableComponents.reduce((sum, c) => sum + c.weight, 0)
-      : 1;
+  const totalWeight = applicableComponents.reduce(
+    (sum, c) => sum + c.weight,
+    0
+  );
+
+  const weightPctByLabel = apportionWeights(applicableComponents, totalWeight);
 
   return components.map((c) => ({
     label: c.label,
-    weightPct: Math.round(c.weight * 100),
+    weightPct: weightPctByLabel.get(c.label) ?? 0,
     actualPct: c.applicable ? Math.round(c.value * 100) : 0,
     applicable: c.applicable,
   }));
+}
+
+/**
+ * Splits 100 points across the applicable factors by largest remainder.
+ *
+ * Rounding each share independently does not add up: drop the licences factor
+ * and the other five round to 101 between them, which is a visible defect in a
+ * dialog whose whole job is to show how the score is composed. Largest
+ * remainder hands the leftover points to the factors that lost the most to
+ * rounding, so the column always totals exactly 100.
+ */
+function apportionWeights(
+  applicable: readonly { label: string; weight: number }[],
+  totalWeight: number
+): Map<string, number> {
+  const result = new Map<string, number>();
+  if (applicable.length === 0 || totalWeight <= 0) return result;
+
+  const exact = applicable.map((c) => ({
+    label: c.label,
+    share: (c.weight / totalWeight) * 100,
+  }));
+
+  let assigned = 0;
+  for (const entry of exact) {
+    const floored = Math.floor(entry.share);
+    result.set(entry.label, floored);
+    assigned += floored;
+  }
+
+  const byRemainder = [...exact].sort((a, b) => (b.share % 1) - (a.share % 1));
+  for (let i = 0; i < 100 - assigned; i++) {
+    const entry = byRemainder[i % byRemainder.length];
+    result.set(entry.label, (result.get(entry.label) ?? 0) + 1);
+  }
+
+  return result;
 }
 
 export const getCachedDashboardKpiMetrics = unstable_cache(

@@ -76,7 +76,11 @@ vi.mock('@/db/schema', () => ({
   },
   users: { id: 'users.id' },
   models: { id: 'models.id', categoryId: 'models.categoryId' },
-  categories: { id: 'categories.id', name: 'categories.name', pillar: 'categories.pillar' },
+  categories: {
+    id: 'categories.id',
+    name: 'categories.name',
+    pillar: 'categories.pillar',
+  },
   brands: { id: 'brands.id' },
   systemAuditLogs: { id: 'systemAuditLogs.id' },
   maintenanceTickets: { id: 'maintenanceTickets.id' },
@@ -128,15 +132,18 @@ function buildFormData(overrides: Record<string, string> = {}): FormData {
  *  to returning [] for all subsequent calls (disposal records, assets, etc.).
  *  The action calls db.select multiple times inside the transaction. */
 function mockCategoryThenFallback(categoryName: string) {
+  mockCategoriesThenFallback([categoryName]);
+}
+
+/** As above, but for a batch: the lookup returns one row per asset. */
+function mockCategoriesThenFallback(categoryNames: readonly string[]) {
   let callCount = 0;
   mockDb.select.mockImplementation(() => {
     callCount++;
     // First select call = category lookup (outside transaction).
     // Subsequent calls = disposal records, assets, purchases (inside tx).
     const value =
-      callCount === 1
-        ? [{ name: categoryName }]
-        : [];
+      callCount === 1 ? categoryNames.map((name) => ({ name })) : [];
     return chain(value);
   });
 }
@@ -167,14 +174,20 @@ describe('executeAssetDisposal', () => {
 
     it('accepts Recycled as a valid disposalMethod', async () => {
       // Should not fail at the schema level (it may still fail at DB level)
-      const fd = buildFormData({ disposalMethod: 'Recycled', dataWiped: 'true' });
+      const fd = buildFormData({
+        disposalMethod: 'Recycled',
+        dataWiped: 'true',
+      });
       const result = await executeAssetDisposal(prevState, fd);
       // Will fail at DB (no records), but NOT with 'Validation failed.'
       expect(result.message).not.toBe('Validation failed.');
     });
 
     it('accepts Disposed as a valid disposalMethod', async () => {
-      const fd = buildFormData({ disposalMethod: 'Disposed', dataWiped: 'true' });
+      const fd = buildFormData({
+        disposalMethod: 'Disposed',
+        dataWiped: 'true',
+      });
       const result = await executeAssetDisposal(prevState, fd);
       expect(result.message).not.toBe('Validation failed.');
     });
@@ -182,68 +195,111 @@ describe('executeAssetDisposal', () => {
 
   // ── dataWiped category-aware enforcement ─────────────────────────────────
   describe('dataWiped enforcement', () => {
-    it('rejects single data-bearing asset when dataWiped=false', async () => {
+    const WIPE_REQUIRED =
+      'Confirm the data has been wiped before disposing these assets.';
+
+    it('rejects a data-bearing asset when dataWiped=false', async () => {
       mockCategoryThenFallback('Laptop');
       const fd = buildFormData({ dataWiped: 'false' });
       const result = await executeAssetDisposal(prevState, fd);
       expect(result.success).toBe(false);
-      expect(result.message).toBe(
-        'Data wipe confirmation is required for this device type.'
-      );
+      expect(result.message).toBe(WIPE_REQUIRED);
     });
 
-    it('rejects "server" category without dataWiped confirmation', async () => {
+    it('rejects a "Server" category without confirmation', async () => {
       mockCategoryThenFallback('Server');
       const fd = buildFormData({ dataWiped: 'false' });
       const result = await executeAssetDisposal(prevState, fd);
       expect(result.success).toBe(false);
-      expect(result.message).toBe(
-        'Data wipe confirmation is required for this device type.'
-      );
+      expect(result.message).toBe(WIPE_REQUIRED);
     });
 
-    it('allows single non-data-bearing asset (e.g. Chair) with dataWiped=false', async () => {
+    it('allows a chair through without confirmation', async () => {
       mockCategoryThenFallback('Office Chair');
       const fd = buildFormData({ dataWiped: 'false' });
       const result = await executeAssetDisposal(prevState, fd);
-      // Should pass the dataWiped gate and fail later at DB (no disposal records)
-      expect(result.message).not.toBe(
-        'Data wipe confirmation is required for this device type.'
-      );
+      // Clears the wipe gate; fails later on the empty disposal-record mock.
+      expect(result.message).not.toBe(WIPE_REQUIRED);
     });
 
-    it('allows single printer asset with dataWiped=false', async () => {
-      mockCategoryThenFallback('Printer');
+    it('allows a monitor through without confirmation', async () => {
+      mockCategoryThenFallback('Monitor');
       const fd = buildFormData({ dataWiped: 'false' });
       const result = await executeAssetDisposal(prevState, fd);
-      expect(result.message).not.toBe(
-        'Data wipe confirmation is required for this device type.'
-      );
+      expect(result.message).not.toBe(WIPE_REQUIRED);
     });
 
-    it('skips dataWiped check for bulk disposals even with data-bearing names', async () => {
-      // Bulk = 2+ assets; the category check should be bypassed entirely
+    it.each(['Laptops', 'Smartphone', 'Notebook', 'PC', 'Printer'])(
+      'requires confirmation for %s, which no keyword list anticipated',
+      async (categoryName) => {
+        // The rule fails closed, so plurals, renames and categories invented
+        // after the fact are covered rather than silently exempt.
+        mockCategoryThenFallback(categoryName);
+        const fd = buildFormData({ dataWiped: 'false' });
+        const result = await executeAssetDisposal(prevState, fd);
+        expect(result.success).toBe(false);
+        expect(result.message).toBe(WIPE_REQUIRED);
+      }
+    );
+
+    it('requires confirmation for a bulk batch of data-bearing assets', async () => {
+      // Treating "more than one asset" as a mixed batch waived the
+      // confirmation for a trolley of laptops. A batch is exempt only when
+      // every asset in it is.
+      mockCategoriesThenFallback(['Laptop', 'Laptop']);
       const fd = buildFormData({ dataWiped: 'false' });
       fd.set('disposalIds', JSON.stringify([1, 2]));
       fd.set('assetIds', JSON.stringify([VALID_UUID, VALID_UUID_2]));
       const result = await executeAssetDisposal(prevState, fd);
-      // db.select should NOT have been called for a category lookup
-      // Result will fail at DB level, but not at dataWiped gate
-      expect(result.message).not.toBe(
-        'Data wipe confirmation is required for this device type.'
-      );
+      expect(result.success).toBe(false);
+      expect(result.message).toBe(WIPE_REQUIRED);
     });
 
-    it('allows data-bearing device when dataWiped=true (no category check needed)', async () => {
-      // When dataWiped is true the guard short-circuits and the category DB
-      // query is never issued. The submission should proceed past both the
-      // schema layer and the dataWiped gate (and ultimately fail at the DB
-      // level since no disposal records exist in the mock).
+    it('requires confirmation when only part of a batch is data-bearing', async () => {
+      mockCategoriesThenFallback(['Office Chair', 'Laptop']);
+      const fd = buildFormData({ dataWiped: 'false' });
+      fd.set('disposalIds', JSON.stringify([1, 2]));
+      fd.set('assetIds', JSON.stringify([VALID_UUID, VALID_UUID_2]));
+      const result = await executeAssetDisposal(prevState, fd);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe(WIPE_REQUIRED);
+    });
+
+    it('allows a batch through when nothing in it can hold data', async () => {
+      mockCategoriesThenFallback(['Office Chair', 'Desk']);
+      const fd = buildFormData({ dataWiped: 'false' });
+      fd.set('disposalIds', JSON.stringify([1, 2]));
+      fd.set('assetIds', JSON.stringify([VALID_UUID, VALID_UUID_2]));
+      const result = await executeAssetDisposal(prevState, fd);
+      expect(result.message).not.toBe(WIPE_REQUIRED);
+    });
+
+    it('is not fooled by a duplicated asset ID posing as a batch', async () => {
+      // The schema accepts duplicates, so `[id, id]` used to read as bulk and
+      // skip the gate, then deduplicate back to the one data-bearing asset
+      // inside the transaction. The check runs after normalization now.
+      mockCategoryThenFallback('Laptop');
+      const fd = buildFormData({ dataWiped: 'false' });
+      fd.set('disposalIds', JSON.stringify([1, 1]));
+      fd.set('assetIds', JSON.stringify([VALID_UUID, VALID_UUID]));
+      const result = await executeAssetDisposal(prevState, fd);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe(WIPE_REQUIRED);
+    });
+
+    it('requires confirmation when the category cannot be resolved', async () => {
+      // No row came back for the asset, so we cannot say it is harmless.
+      mockCategoriesThenFallback([]);
+      const fd = buildFormData({ dataWiped: 'false' });
+      const result = await executeAssetDisposal(prevState, fd);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe(WIPE_REQUIRED);
+    });
+
+    it('skips the category lookup entirely when dataWiped=true', async () => {
       const fd = buildFormData({ dataWiped: 'true' });
       const result = await executeAssetDisposal(prevState, fd);
-      expect(result.message).not.toBe(
-        'Data wipe confirmation is required for this device type.'
-      );
+      expect(result.message).not.toBe(WIPE_REQUIRED);
       expect(result.message).not.toBe('Validation failed.');
     });
   });
