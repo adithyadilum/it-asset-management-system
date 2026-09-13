@@ -201,18 +201,20 @@ export function RolesManagementTable({
         const isSelf = user.id === currentUserId;
 
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                <Button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => openEditModal(user)}
                   aria-label={`Change role for ${user.name}`}
                   disabled={isSelf}
                 >
-                  <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                </button>
+                  <Pencil className="h-4 w-4" />
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 {isSelf
@@ -224,15 +226,17 @@ export function RolesManagementTable({
             {selectedRole !== 'Employee' && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
+                  <Button
                     type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={() => openRemoveModal(user)}
                     aria-label={`Remove ${user.name} from ${roleLabel}`}
                     disabled={isSelf}
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </button>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {isSelf
@@ -264,16 +268,11 @@ export function RolesManagementTable({
           <Button
             type="button"
             size="sm"
-            className="h-8 w-32 justify-between rounded-lg bg-primary px-2.5 text-primary-foreground shadow-box-shadow-shadow-xs hover:bg-primary/90"
+            className="h-9 gap-2 rounded-lg bg-primary px-4 text-primary-foreground shadow-sm hover:bg-primary/90"
             onClick={() => setIsAddModalOpen(true)}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span
-              className={cn(
-                'flex flex-1 items-center justify-center',
-                TYPOGRAPHY_CLASSNAMES.textSmMedium
-              )}
-            >
+            <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
               Add User
             </span>
           </Button>

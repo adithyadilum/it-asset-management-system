@@ -482,15 +482,12 @@ export function AddUsersToRoleModal({
         </div>
 
         {/* ── Footer ── */}
-        <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             onClick={() => handleOpenChange(false)}
-            className={cn(
-              'px-6 hover:bg-muted',
-              TYPOGRAPHY_CLASSNAMES.textSmMedium
-            )}
+            className="h-9 px-4 bg-secondary border border-border text-secondary-foreground hover:bg-secondary/80 shadow-sm rounded-lg"
             disabled={isSubmitting}
           >
             Cancel
@@ -499,10 +496,7 @@ export function AddUsersToRoleModal({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || mappedSelection.length === 0}
-            className={cn(
-              'px-6 bg-primary text-primary-foreground hover:bg-primary/90',
-              TYPOGRAPHY_CLASSNAMES.textSmMedium
-            )}
+            className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-lg disabled:opacity-50"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
