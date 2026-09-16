@@ -51,9 +51,10 @@ function formatDate(value: string | Date | null | undefined) {
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
       <span
-        className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} truncate text-foreground`}
+        className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} truncate text-foreground min-w-0 text-right`}
+        title={value}
       >
         {value}
       </span>
@@ -133,7 +134,10 @@ export function LogCompleteRepairDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[520px] p-6 bg-background rounded-xl shadow-lg border border-border [&>button]:hidden">
+      <DialogContent
+        showCloseButton={false}
+        className="sm:max-w-[520px] w-full p-6 bg-background rounded-xl shadow-lg border border-border"
+      >
         <div className="absolute right-4 top-4">
           <button
             onClick={handleClose}
@@ -184,12 +188,12 @@ export function LogCompleteRepairDialog({
             <div className="flex items-baseline justify-between gap-3">
               <Label
                 htmlFor="repair-actual-cost"
-                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground shrink-0`}
               >
                 Actual Final Cost: <span className="text-destructive">*</span>
               </Label>
               {estimate !== null && Number.isFinite(estimate) ? (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground min-w-0 truncate text-right">
                   Estimated {formatMoneyByCurrency(estimate, ticketCurrency)}
                 </span>
               ) : null}
@@ -202,7 +206,7 @@ export function LogCompleteRepairDialog({
                 }
                 disabled={isLoading}
               >
-                <SelectTrigger className="w-[80px] rounded-r-none border-r-0 focus:ring-0 focus:border-border bg-background">
+                <SelectTrigger className="w-[80px] shrink-0 rounded-r-none border-r-0 focus:ring-0 focus:border-border bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -222,7 +226,7 @@ export function LogCompleteRepairDialog({
                   setFormData({ ...formData, actualCost: e.target.value })
                 }
                 disabled={isLoading}
-                className={`flex-1 rounded-l-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+                className={`flex-1 min-w-0 rounded-l-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               />
             </div>
             {/* "Did this come in over estimate?" is the reviewer's actual
