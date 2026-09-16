@@ -96,7 +96,8 @@ describe('AddUsersToRoleModal', () => {
 
     await user.type(
       screen.getByPlaceholderText(/search company directory/i),
-      'o'.repeat(2)
+      // searchUsers returns [] below three characters, client and server alike.
+      'o'.repeat(3)
     );
 
     await waitFor(() => {

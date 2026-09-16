@@ -22,11 +22,16 @@ import {
 } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { executeDisposalSchema } from '@/lib/validations/disposals';
+import { batchRequiresDataWipeConfirmation } from '@/lib/disposals/data-bearing';
 import type { DisposalFormState } from '@/types/disposals';
 import {
   normalizeDisposalIds,
   normalizeAssetIds,
 } from '@/actions/disposals/utils';
+
+/** Shown when a batch holds something that could carry data. */
+const DATA_WIPE_REQUIRED_MESSAGE =
+  'Confirm the data has been wiped before disposing these assets.';
 
 export async function executeAssetDisposal(
   _prevState: DisposalFormState,
@@ -97,6 +102,45 @@ export async function executeAssetDisposal(
         success: false,
         message: 'Disposal and asset ID counts do not match.',
       };
+    }
+
+    // ── 4b. Data-sanitisation confirmation ───────────────────────────────────
+    // The schema accepts `dataWiped` either way; whether it may be false is a
+    // question about the assets being disposed, which only the database can
+    // answer. Every asset in the batch is checked, not just the first and not
+    // only single-asset submissions: a batch is exempt only when nothing in it
+    // can hold data.
+    //
+    // Deliberately after normalization. The schema permits duplicate UUIDs, so
+    // an earlier version of this check -- which read the raw array and only
+    // applied to a length of exactly one -- could be stepped around by sending
+    // `[assetId, assetId]`, which looked like a bulk request here and then
+    // deduplicated back to the single data-bearing asset inside the
+    // transaction.
+    if (!validData.dataWiped) {
+      const categoryRows = await db
+        .select({ name: categories.name })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .where(inArray(assets.id, normalizedAssetIds));
+
+      // A missing row means an asset we could not classify, which
+      // `batchRequiresDataWipeConfirmation` treats as needing confirmation --
+      // so pad rather than letting a join drop the asset silently.
+      const categoryNames: (string | null)[] = categoryRows.map(
+        (row) => row.name
+      );
+      while (categoryNames.length < normalizedAssetIds.length) {
+        categoryNames.push(null);
+      }
+
+      if (batchRequiresDataWipeConfirmation(categoryNames)) {
+        return {
+          success: false,
+          message: DATA_WIPE_REQUIRED_MESSAGE,
+        };
+      }
     }
 
     const dbTimer = startLatencyTimer();
@@ -212,6 +256,14 @@ export async function executeAssetDisposal(
               reason: validData.reason,
               actualSalvageValue: String(salvagePerAsset.toFixed(2)),
               bookValueAtDisposal: String(bookValue.toFixed(2)),
+              // The form has always collected these three and the table has
+              // always had columns for them, but nothing wrote them: the
+              // disposal report reads `data_wiped` and printed "No" for every
+              // asset ever disposed, however carefully the operator confirmed
+              // it. Recording the confirmation is the entire point of asking.
+              disposalMethod: validData.disposalMethod,
+              dataWiped: validData.dataWiped,
+              tagsRemoved: validData.tagsRemoved,
             })
             .where(eq(assetDisposals.id, record.disposalId))
             .returning({ disposalId: assetDisposals.id });

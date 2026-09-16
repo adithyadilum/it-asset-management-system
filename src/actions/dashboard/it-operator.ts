@@ -60,6 +60,7 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
     totalActiveAssetsChange: kpiMetrics.totalActiveAssetsChange,
     fleetHealthScore: kpiMetrics.fleetHealthScore,
     fleetHealthLabel: kpiMetrics.fleetHealthLabel,
+    fleetHealthBreakdown: kpiMetrics.fleetHealthBreakdown,
     inactiveSoftwareSeats: kpiMetrics.inactiveSoftwareSeats,
     warrantyExpiries30Days: kpiMetrics.warrantyExpiries30Days,
     softwareRenewals30Days: kpiMetrics.softwareRenewals30Days,
