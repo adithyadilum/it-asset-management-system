@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Building2,
   Laptop,
   Search,
   Users,
@@ -38,7 +37,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatMoneyByCurrency } from '@/lib/currency';
 import { addMonths, localDate, reportDate } from '@/lib/reporting-time';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -588,10 +587,6 @@ export function FinancialCostConfiguration({ data }: { data: Settings }) {
               Manage teams, shared equipment and software prices in one place.
             </p>
           </div>
-          <div className="hidden items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground sm:flex">
-            <Building2 className="size-3.5" />
-            Teams and workplaces connect automatically
-          </div>
         </div>
       </div>
       <Tabs
@@ -642,158 +637,158 @@ export function FinancialCostConfiguration({ data }: { data: Settings }) {
             />
           </div>
         </div>
-      </Tabs>
-      {tab === 'people' && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            A person&apos;s department and workplace determine their share of
-            common costs.
-          </p>
-          <SettingsRows
-            key={`people:${search}`}
-            rows={data.people.filter((p) =>
-              match(p.name, p.email, p.department, p.location)
-            )}
-            onEdit={(row) => setSelected({ kind: 'people', row })}
-            columns={[
-              {
-                title: 'Person',
-                render: (p) => (
-                  <div>
-                    <p className="font-medium">{p.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {p.email}
-                    </p>
-                  </div>
-                ),
-              },
-              { title: 'Department', render: (p) => p.department },
-              {
-                title: 'Workplace',
-                render: (p) => (
-                  <span className="text-muted-foreground">{p.location}</span>
-                ),
-              },
-            ]}
-          />
-        </div>
-      )}
-      {tab === 'equipment' && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Choose a team or workplace. Personal equipment follows its assigned
-            user automatically.
-          </p>
-          <SettingsRows
-            key={`equipment:${search}`}
-            rows={data.equipment.filter((a) =>
-              match(a.name, a.tag, a.category, a.allocationName)
-            )}
-            onEdit={(row) => setSelected({ kind: 'equipment', row })}
-            columns={[
-              {
-                title: 'Equipment',
-                render: (a) => (
-                  <div>
-                    <p className="font-medium">{a.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {a.tag} · {a.category}
-                    </p>
-                  </div>
-                ),
-              },
-              { title: 'Cost allocation', render: (a) => a.allocationName },
-              {
-                title: 'Usage',
-                render: (a) => (
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs">
-                    {a.shared ? 'Shared equipment' : 'Assigned user'}
-                  </span>
-                ),
-              },
-              {
-                title: 'Asset status',
-                render: (a) => (
-                  <span className="text-muted-foreground">{a.status}</span>
-                ),
-              },
-            ]}
-          />
-        </div>
-      )}
-      {tab === 'software' && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Set the price once. Seat costs and unused capacity are calculated
-            automatically.
-          </p>
-          <SettingsRows
-            key={`software:${search}`}
-            rows={data.software.filter((s) => match(s.name, s.tag))}
-            onEdit={(row) => setSelected({ kind: 'software', row })}
-            columns={[
-              {
-                title: 'Product',
-                render: (s) => (
-                  <div>
-                    <p className="font-medium">{s.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {s.licenseType === 'Perpetual'
-                        ? 'One-time licence'
-                        : 'Subscription'}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                title: 'Seats',
-                render: (s) => (
-                  <div className="min-w-24">
-                    <p>
-                      {s.assigned}{' '}
-                      <span className="text-muted-foreground">
-                        of {s.seats} assigned
-                      </span>
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {Math.max(0, s.seats - s.assigned)} unused seats
-                    </p>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{
-                          width: `${Math.min(100, (s.assigned / s.seats) * 100)}%`,
-                        }}
-                      />
+        {tab === 'people' && (
+          <TabsContent value="people" className="space-y-4 pt-5">
+            <p className="text-sm text-muted-foreground">
+              A person&apos;s department and workplace determine their share of
+              common costs.
+            </p>
+            <SettingsRows
+              key={`people:${search}`}
+              rows={data.people.filter((p) =>
+                match(p.name, p.email, p.department, p.location)
+              )}
+              onEdit={(row) => setSelected({ kind: 'people', row })}
+              columns={[
+                {
+                  title: 'Person',
+                  render: (p) => (
+                    <div>
+                      <p className="font-medium">{p.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {p.email}
+                      </p>
                     </div>
-                  </div>
-                ),
-              },
-              {
-                title: 'Paid price',
-                render: (s) =>
-                  s.term?.amount
-                    ? formatMoneyByCurrency(s.term.amount, s.term.currency)
-                    : '—',
-              },
-              {
-                title: 'Coverage ends',
-                render: (s) =>
-                  s.term
-                    ? new Date(
-                        reportDate(s.term.to) - 86400000
-                      ).toLocaleDateString('en-GB', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        timeZone: 'Asia/Colombo',
-                      })
-                    : '—',
-              },
-            ]}
-          />
-        </div>
-      )}
+                  ),
+                },
+                { title: 'Department', render: (p) => p.department },
+                {
+                  title: 'Workplace',
+                  render: (p) => (
+                    <span className="text-muted-foreground">{p.location}</span>
+                  ),
+                },
+              ]}
+            />
+          </TabsContent>
+        )}
+        {tab === 'equipment' && (
+          <TabsContent value="equipment" className="space-y-4 pt-5">
+            <p className="text-sm text-muted-foreground">
+              Choose a team or workplace. Personal equipment follows its
+              assigned user automatically.
+            </p>
+            <SettingsRows
+              key={`equipment:${search}`}
+              rows={data.equipment.filter((a) =>
+                match(a.name, a.tag, a.category, a.allocationName)
+              )}
+              onEdit={(row) => setSelected({ kind: 'equipment', row })}
+              columns={[
+                {
+                  title: 'Equipment',
+                  render: (a) => (
+                    <div>
+                      <p className="font-medium">{a.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {a.tag} · {a.category}
+                      </p>
+                    </div>
+                  ),
+                },
+                { title: 'Cost allocation', render: (a) => a.allocationName },
+                {
+                  title: 'Usage',
+                  render: (a) => (
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs">
+                      {a.shared ? 'Shared equipment' : 'Assigned user'}
+                    </span>
+                  ),
+                },
+                {
+                  title: 'Asset status',
+                  render: (a) => (
+                    <span className="text-muted-foreground">{a.status}</span>
+                  ),
+                },
+              ]}
+            />
+          </TabsContent>
+        )}
+        {tab === 'software' && (
+          <TabsContent value="software" className="space-y-4 pt-5">
+            <p className="text-sm text-muted-foreground">
+              Set the price once. Seat costs and unused capacity are calculated
+              automatically.
+            </p>
+            <SettingsRows
+              key={`software:${search}`}
+              rows={data.software.filter((s) => match(s.name, s.tag))}
+              onEdit={(row) => setSelected({ kind: 'software', row })}
+              columns={[
+                {
+                  title: 'Product',
+                  render: (s) => (
+                    <div>
+                      <p className="font-medium">{s.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {s.licenseType === 'Perpetual'
+                          ? 'One-time licence'
+                          : 'Subscription'}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  title: 'Seats',
+                  render: (s) => (
+                    <div className="min-w-24">
+                      <p>
+                        {s.assigned}{' '}
+                        <span className="text-muted-foreground">
+                          of {s.seats} assigned
+                        </span>
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {Math.max(0, s.seats - s.assigned)} unused seats
+                      </p>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{
+                            width: `${Math.min(100, (s.assigned / s.seats) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  title: 'Paid price',
+                  render: (s) =>
+                    s.term?.amount
+                      ? formatMoneyByCurrency(s.term.amount, s.term.currency)
+                      : '—',
+                },
+                {
+                  title: 'Coverage ends',
+                  render: (s) =>
+                    s.term
+                      ? new Date(
+                          reportDate(s.term.to) - 86400000
+                        ).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          timeZone: 'Asia/Colombo',
+                        })
+                      : '—',
+                },
+              ]}
+            />
+          </TabsContent>
+        )}
+      </Tabs>
       <Dialog
         open={selected != null}
         onOpenChange={(open) => {
