@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { recordedMoneySql } from '@/lib/recorded-money';
+import { captureReportingRate } from '@/lib/capture-reporting-rate';
 
 import { db } from '@/db';
 import {
@@ -175,7 +177,7 @@ export async function getTicketForIssueReview(
     const repairResult = await db
       .select({
         totalRepair:
-          sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+          sql<number>`COALESCE(SUM(${recordedMoneySql(maintenanceTickets.actualCost, maintenanceTickets.currencyCode, maintenanceTickets.exchangeRate)}), 0)`.as(
             'totalRepair'
           ),
       })
@@ -187,9 +189,13 @@ export async function getTicketForIssueReview(
         )
       );
 
-    const totalRepairCosts = parseFloat(
-      repairResult[0]?.totalRepair?.toString() || '0'
-    );
+    const purchaseRate =
+      purchase?.currencyCode === 'LKR' ? 1 : Number(purchase?.exchangeRate);
+    const totalRepairCosts =
+      purchaseRate > 0 &&
+      (purchase?.currencyCode === 'LKR' || purchaseRate !== 1)
+        ? Number(repairResult[0]?.totalRepair ?? 0) / purchaseRate
+        : 0;
     const totalTCO = Math.round((totalCost + totalRepairCosts) * 100) / 100;
 
     // Determine Warranty Status
@@ -838,6 +844,8 @@ export async function completeRepairTicket(
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
   }
 
+  const exchangeRate = await captureReportingRate(parsed.data.currencyCode);
+
   // 3. Atomic Database Transaction
   try {
     const result = await db.transaction(async (tx) => {
@@ -871,6 +879,7 @@ export async function completeRepairTicket(
         .set({
           status: 'COMPLETED',
           actualCost: parsed.data.actualCost.toString(),
+          exchangeRate,
           currencyCode: parsed.data.currencyCode,
           actualCompletionDate: now,
           resolutionNotes: parsed.data.resolutionNotes,

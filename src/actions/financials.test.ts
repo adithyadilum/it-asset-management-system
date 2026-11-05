@@ -119,6 +119,7 @@ describe('Financials Actions', () => {
             purchaseDate: new Date().toISOString(),
             originalPrice: '1200',
             currencyCode: 'USD',
+            exchangeRate: '300',
             usefulLifeMonths: 12,
           },
         ])
@@ -157,6 +158,7 @@ describe('Financials Actions', () => {
                 purchaseDate: new Date().toISOString(),
                 originalPrice: '1000',
                 currencyCode: 'USD',
+                exchangeRate: '300',
                 totalRepairCosts: '250',
               },
             ])
@@ -166,6 +168,7 @@ describe('Financials Actions', () => {
               {
                 originalPrice: '1000',
                 currencyCode: 'USD',
+                exchangeRate: '300',
                 totalRepairCosts: '250',
                 purchaseDate: '2024-03-15T00:00:00.000Z',
               },
@@ -177,6 +180,7 @@ describe('Financials Actions', () => {
                 completedAt: new Date('2024-05-20T00:00:00.000Z'),
                 actualCost: '250',
                 currencyCode: 'USD',
+                exchangeRate: '300',
               },
             ])
           ),
@@ -210,6 +214,7 @@ describe('Financials Actions', () => {
               {
                 originalPrice: '1000',
                 currencyCode: 'USD',
+                exchangeRate: '300',
                 purchaseDate: '2024-03-15T00:00:00.000Z',
                 totalRepairCosts: '250',
               },
@@ -221,11 +226,13 @@ describe('Financials Actions', () => {
                 completedAt: new Date('2024-05-20T00:00:00.000Z'),
                 actualCost: '100',
                 currencyCode: 'USD',
+                exchangeRate: '300',
               },
               {
                 completedAt: new Date('2024-07-02T00:00:00.000Z'),
                 actualCost: '150',
                 currencyCode: 'USD',
+                exchangeRate: '300',
               },
             ])
           ),
@@ -265,6 +272,7 @@ describe('Financials Actions', () => {
             disposalDate: new Date().toISOString(),
             originalPrice: '2000',
             currencyCode: 'USD',
+            exchangeRate: '300',
             bookValueAtDisposal: '500',
             estimatedSalvageValue: '80',
             actualSalvageValue: '100',

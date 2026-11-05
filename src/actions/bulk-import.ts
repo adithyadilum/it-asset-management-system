@@ -17,7 +17,7 @@ import { validateRows } from '@/lib/bulk-import/validate-rows';
 import { eq, like, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import Papa from 'papaparse';
-import { convertCurrencyAmount } from '@/lib/currency';
+import { rateFromRecordedResponse } from '@/lib/recorded-money';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
 import { Redis } from '@upstash/redis';
 import { randomUUID } from 'crypto';
@@ -270,12 +270,10 @@ export async function executeBulkImport(
               )
             : null;
 
-          const conversionRate = convertCurrencyAmount(
-            1,
+          const conversionRate = rateFromRecordedResponse(
             row.currencyCode || 'LKR',
-            'LKR',
             apiRates
-          ).toFixed(6);
+          );
 
           await tx.insert(assetPurchases).values({
             assetId: newAsset.id,

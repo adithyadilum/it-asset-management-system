@@ -9,6 +9,7 @@ import {
   models,
 } from '@/db/schema';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
+import { recordedMoneySql } from '@/lib/recorded-money';
 
 export interface AssetFinancialVitals {
   assetId: string;
@@ -47,6 +48,7 @@ export async function getAssetFinancialVitalsByResolvedId(
         shippingCost: assetPurchases.shippingCost,
         totalCost: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
+        exchangeRate: assetPurchases.exchangeRate,
         warrantyExpiry: assetPurchases.warrantyExpiry,
         // Drives whether this asset depreciates at all.
         pillar: categories.pillar,
@@ -60,7 +62,7 @@ export async function getAssetFinancialVitalsByResolvedId(
     db
       .select({
         totalRepair:
-          sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+          sql<number>`COALESCE(SUM(${recordedMoneySql(maintenanceTickets.actualCost, maintenanceTickets.currencyCode, maintenanceTickets.exchangeRate)}), 0)`.as(
             'totalRepair'
           ),
       })
@@ -78,9 +80,15 @@ export async function getAssetFinancialVitalsByResolvedId(
   }
 
   const asset = assetResult[0];
-  const totalRepairCosts = Number.parseFloat(
+  const reportingRepairCosts = Number.parseFloat(
     repairResult[0]?.totalRepair?.toString() || '0'
   );
+  const purchaseRate =
+    asset.currencyCode === 'LKR' ? 1 : Number(asset.exchangeRate);
+  const totalRepairCosts =
+    purchaseRate > 0 && (asset.currencyCode === 'LKR' || purchaseRate !== 1)
+      ? reportingRepairCosts / purchaseRate
+      : 0;
   const price = Number.parseFloat(asset.totalCost?.toString() || '0');
   const salvage = Number.parseFloat(asset.salvageValue?.toString() || '0');
   const currentBookValue = calculateCurrentBookValue({

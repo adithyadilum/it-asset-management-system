@@ -1,4 +1,5 @@
 'use client';
+import { collectLedgerPages, csvCell } from '@/lib/csv';
 
 import { useState, useMemo, useEffect, useTransition, useRef } from 'react';
 import { Download, ChevronDown, DollarSign } from 'lucide-react';
@@ -207,15 +208,17 @@ export function TCOLedger({
       (f) => f.field === 'Location' && f.operator === 'is'
     )?.value;
 
-    const response = await getTCOLedger({
-      page: 1,
-      pageSize: 5000,
-      search: debouncedSearch,
-      category: categoryFilter,
-      costFilter: costFilter,
-      pillar: pillarFilter,
-      location: locationFilter,
-    });
+    const response = await collectLedgerPages((page) =>
+      getTCOLedger({
+        page,
+        pageSize: 1000,
+        search: debouncedSearch,
+        category: categoryFilter,
+        costFilter: costFilter,
+        pillar: pillarFilter,
+        location: locationFilter,
+      })
+    );
 
     const headers = [
       'Asset ID',
@@ -251,7 +254,7 @@ export function TCOLedger({
 
     const csvContent = [
       headers.join(','),
-      ...csvRows.map((r) => r.map((cell) => `"${cell}"`).join(',')),
+      ...csvRows.map((r) => r.map(csvCell).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -368,6 +371,7 @@ export function TCOLedger({
     // instead squeeze the table into whatever was left over.
     <div className="flex flex-col gap-6">
       <LedgerSummary
+        incompleteCosts={summary.incompleteCosts}
         asOf={summary.asOf}
         stats={[
           {

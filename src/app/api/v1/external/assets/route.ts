@@ -14,7 +14,7 @@ import {
 } from '@/lib/validations/asset-registration';
 import { logAuditAction } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
-import { convertCurrencyAmount } from '@/lib/currency';
+import { rateFromRecordedResponse } from '@/lib/recorded-money';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
 import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 
@@ -151,12 +151,10 @@ export const POST = withApiKey(
 
       // 3. Resolve currency conversion rate
       const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
-      const conversionRate = convertCurrencyAmount(
-        1,
+      const conversionRate = rateFromRecordedResponse(
         input.currencyCode || 'LKR',
-        'LKR',
         apiRates
-      ).toFixed(6);
+      );
 
       // Same default the registration form applies, from the one constant, so
       // an asset created through the API depreciates like any other.

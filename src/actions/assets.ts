@@ -33,7 +33,7 @@ import {
   editAssetSchema,
   type EditAssetActionState,
 } from '@/lib/validations/asset-edit';
-import { convertCurrencyAmount } from '@/lib/currency';
+import { rateFromRecordedResponse } from '@/lib/recorded-money';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
 import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
@@ -217,12 +217,10 @@ export async function registerAsset(
       modelWithCategory.category.prefix.trim().toUpperCase() || categoryPrefix;
 
     const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
-    const conversionRate = convertCurrencyAmount(
-      1,
+    const conversionRate = rateFromRecordedResponse(
       input.currencyCode || 'LKR',
-      'LKR',
       apiRates
-    ).toFixed(6);
+    );
 
     // 6. Database Transaction
     const insertedAsset = await db.transaction(async (tx) => {
@@ -259,6 +257,7 @@ export async function registerAsset(
               status: registersAsAssigned ? 'Assigned' : 'Available',
               condition: input.condition,
               usefulLifeMonths: input.usefulLifeMonths,
+              salvageValue: input.estimatedSalvageValue?.toFixed(2) ?? null,
               instanceAttributes,
             })
             .returning({ id: assets.id, assetTag: assets.assetTag });

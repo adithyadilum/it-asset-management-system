@@ -129,11 +129,12 @@ describe('getAssetFinancialVitals', () => {
             shippingCost: '50',
             totalCost: '1150',
             currencyCode: 'USD',
+            exchangeRate: '300',
             warrantyExpiry: null,
           },
         ])
       )
-      .mockReturnValueOnce(chain([{ totalRepair: '350' }])); // repair costs
+      .mockReturnValueOnce(chain([{ totalRepair: '105000' }])); // repair costs
 
     const result = await getAssetFinancialVitals(MOCK_ASSET_ID);
 
@@ -163,6 +164,7 @@ describe('getAssetFinancialVitals', () => {
             shippingCost: '0',
             totalCost: '1000',
             currencyCode: 'USD',
+            exchangeRate: '300',
             warrantyExpiry: futureDate.toISOString(),
           },
         ])

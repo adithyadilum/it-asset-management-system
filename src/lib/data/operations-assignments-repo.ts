@@ -1253,7 +1253,11 @@ export async function refreshOverdueAssignments(): Promise<void> {
 export async function acceptAssignment(assignmentId: number): Promise<void> {
   const updated = await db
     .update(assetAssignments)
-    .set({ state: 'assigned' })
+    .set({
+      state: 'assigned',
+      acceptanceStatus: 'accepted',
+      acceptedAt: new Date(),
+    })
     .where(
       and(
         eq(assetAssignments.id, assignmentId),
