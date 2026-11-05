@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  AppWindow,
   Armchair,
   Code,
   HardDrive,
@@ -13,9 +14,16 @@ import {
 } from 'lucide-react';
 
 import { acceptAssignmentAction } from '@/actions/employee';
-import type { EmployeeAssignedAsset } from '@/actions/employee';
+import type {
+  EmployeeAssignedAsset,
+  EmployeeSoftwareAsset,
+} from '@/actions/employee';
 import { AcceptAssignmentDialog } from '@/components/features/dashboard/employee/accept-assignment-dialog';
 import { RejectionDialog } from '@/components/features/dashboard/employee/rejection-dialog';
+import {
+  EmployeeAssetDetailDialog,
+  type EmployeeAssetDialogTarget,
+} from '@/components/features/my-assets/employee-asset-detail-dialog';
 import { AssetCard } from '@/components/shared/asset-card';
 import { tiqriToast } from '@/components/shared/sonner';
 import { formatAssetName } from '@/lib/asset-name';
@@ -101,6 +109,8 @@ export function EmployeeAssetGrid({
   const [selected, setSelected] = useState<EmployeeAssignedAsset | null>(null);
   const [isAcceptOpen, setIsAcceptOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [detailTarget, setDetailTarget] =
+    useState<EmployeeAssetDialogTarget | null>(null);
 
   const handleConfirmAccept = async () => {
     if (!selected) return;
@@ -148,6 +158,13 @@ export function EmployeeAssetGrid({
               expectedReturnDate={asset.expectedReturnDate}
               isOverdue={asset.isOverdue}
               assignedDate={formatDay(asset.assignedDate)}
+              onClick={() =>
+                setDetailTarget({
+                  kind: 'equipment',
+                  asset,
+                  icon: presentation.icon,
+                })
+              }
               actions={
                 awaitingAcknowledgement ? (
                   <AcceptAssignmentDialog
@@ -156,7 +173,7 @@ export function EmployeeAssetGrid({
                       asset.modelName
                     )}
                     assetTag={asset.assetTag}
-                    condition="Unknown"
+                    condition={asset.condition ?? 'Good'}
                     assignedBy={asset.assignedByName ?? 'IT'}
                     date={formatDay(asset.assignedDate)}
                     isOpen={
@@ -185,6 +202,22 @@ export function EmployeeAssetGrid({
         })}
       </div>
 
+      <EmployeeAssetDetailDialog
+        target={detailTarget}
+        open={detailTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailTarget(null);
+        }}
+        onRequestAccept={(asset) => {
+          setSelected(asset);
+          setIsAcceptOpen(true);
+        }}
+        onRequestReject={(asset) => {
+          setSelected(asset);
+          setIsRejectOpen(true);
+        }}
+      />
+
       <RejectionDialog
         isOpen={isRejectOpen}
         assignment={selected ? toPendingItem(selected) : null}
@@ -196,6 +229,51 @@ export function EmployeeAssetGrid({
           setIsRejectOpen(false);
           setSelected(null);
           router.refresh();
+        }}
+      />
+    </>
+  );
+}
+
+export function EmployeeSoftwareGrid({
+  assets,
+}: {
+  assets: EmployeeSoftwareAsset[];
+}) {
+  const [detailTarget, setDetailTarget] =
+    useState<EmployeeAssetDialogTarget | null>(null);
+
+  return (
+    <>
+      <div className="mt-3 grid gap-4 xl:grid-cols-3">
+        {assets.map((asset) => (
+          <AssetCard
+            key={asset.allocationId}
+            assetType={`${asset.licenseType} Seat`}
+            name={formatAssetName(asset.brandName, asset.modelName)}
+            status={asset.status}
+            icon={<AppWindow className="h-8 w-8" />}
+            // Software has a publisher logo on its model like anything
+            // else; only these cards were never given it.
+            imageUrl={asset.imageUrl}
+            assetId={asset.assetTag}
+            assignedDate={formatDay(asset.allocatedDate)}
+            onClick={() =>
+              setDetailTarget({
+                kind: 'software',
+                asset,
+                icon: <AppWindow className="h-8 w-8" />,
+              })
+            }
+          />
+        ))}
+      </div>
+
+      <EmployeeAssetDetailDialog
+        target={detailTarget}
+        open={detailTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailTarget(null);
         }}
       />
     </>

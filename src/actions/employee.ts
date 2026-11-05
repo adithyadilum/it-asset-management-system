@@ -12,6 +12,7 @@ import {
   assetAssignments,
   assets,
   categories,
+  locations,
   models,
   notificationQueue,
   softwareAllocations,
@@ -49,6 +50,12 @@ export type EmployeeAssignedAsset = {
   /** Model photo. Falls back to the pillar icon on the card. */
   imageUrl: string | null;
   assignedByName: string | null;
+  condition?: string | null;
+  locationName?: string | null;
+  acceptedAt?: string | null;
+  notes?: string | null;
+  technicalDetails?: Record<string, unknown> | null;
+  instanceAttributes?: Record<string, unknown> | null;
 };
 
 export type EmployeeSoftwareAsset = {
@@ -65,6 +72,9 @@ export type EmployeeSoftwareAsset = {
   allocatedDate: string;
   licenseType: string;
   pillar: 'Software';
+  expiryDate?: string | null;
+  technicalDetails?: Record<string, unknown> | null;
+  instanceAttributes?: Record<string, unknown> | null;
 };
 
 /**
@@ -97,6 +107,12 @@ export async function getCurrentEmployeeAssets(): Promise<
         expectedReturnDate: assetAssignments.expectedReturnDate,
         imageUrl: models.imageUrl,
         assignedByName: users.name,
+        condition: assets.condition,
+        locationName: locations.name,
+        acceptedAt: assetAssignments.acceptedAt,
+        notes: assetAssignments.notes,
+        technicalDetails: models.technicalDetails,
+        instanceAttributes: assets.instanceAttributes,
       })
       .from(assetAssignments)
       .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -104,6 +120,7 @@ export async function getCurrentEmployeeAssets(): Promise<
       .innerJoin(brands, eq(models.brandId, brands.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(users, eq(assetAssignments.assignedById, users.id))
+      .leftJoin(locations, eq(assets.locationId, locations.id))
       .where(
         and(
           eq(assetAssignments.assignedToUserId, currentUser.id),
@@ -132,6 +149,17 @@ export async function getCurrentEmployeeAssets(): Promise<
     return rows.map((row) => ({
       ...row,
       assignedDate: row.assignedDate.toISOString(),
+      acceptedAt: row.acceptedAt
+        ? row.acceptedAt.toISOString()
+        : (row.acceptedAt as null | undefined),
+      technicalDetails: row.technicalDetails as
+        | Record<string, unknown>
+        | null
+        | undefined,
+      instanceAttributes: row.instanceAttributes as
+        | Record<string, unknown>
+        | null
+        | undefined,
       isOverdue: row.expectedReturnDate
         ? new Date(row.expectedReturnDate) < startOfToday
         : false,
@@ -172,6 +200,9 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
         imageUrl: models.imageUrl,
         allocatedDate: softwareAllocations.allocatedAt,
         licenseType: softwareLicenses.licenseType,
+        expiryDate: softwareLicenses.expiryDate,
+        technicalDetails: models.technicalDetails,
+        instanceAttributes: assets.instanceAttributes,
       })
       .from(softwareAllocations)
       .innerJoin(
@@ -210,6 +241,15 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
       allocatedDate: row.allocatedDate.toISOString(),
       licenseType: row.licenseType,
       pillar: 'Software',
+      expiryDate: row.expiryDate,
+      technicalDetails: row.technicalDetails as
+        | Record<string, unknown>
+        | null
+        | undefined,
+      instanceAttributes: row.instanceAttributes as
+        | Record<string, unknown>
+        | null
+        | undefined,
     }));
   } catch (error) {
     console.error('getCurrentEmployeeSoftwareAssets failed', {

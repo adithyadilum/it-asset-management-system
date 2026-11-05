@@ -26,8 +26,12 @@ interface AssetCardProps {
   imageUrl?: string | null;
   /** Accept/Decline and similar, so the action sits with the asset it concerns. */
   actions?: ReactNode;
+  onClick?: () => void;
   className?: string;
 }
+
+const INTERACTIVE_CARD_SELECTOR =
+  "button,a,input,textarea,select,[role='button'],[role='dialog']";
 
 function formatDay(value: string) {
   const date = new Date(value);
@@ -51,6 +55,7 @@ export function AssetCard({
   isOverdue = false,
   imageUrl,
   actions,
+  onClick,
   className,
 }: AssetCardProps) {
   const showAssignmentBadge =
@@ -60,7 +65,42 @@ export function AssetCard({
 
   return (
     <article
-      className={cn('rounded-lg border border-border bg-card p-4', className)}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={
+        onClick
+          ? (event) => {
+              const target = event.target as HTMLElement;
+              const closestInteractive = target.closest(
+                INTERACTIVE_CARD_SELECTOR
+              );
+              if (
+                closestInteractive &&
+                closestInteractive !== event.currentTarget
+              ) {
+                return;
+              }
+              onClick();
+            }
+          : undefined
+      }
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        'rounded-lg border border-border bg-card p-4',
+        onClick &&
+          'cursor-pointer transition-all hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        className
+      )}
     >
       <header className="flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">{assetType ?? 'Asset'}</p>
@@ -120,7 +160,15 @@ export function AssetCard({
         ) : null}
       </div>
 
-      {actions ? <div className="mt-4">{actions}</div> : null}
+      {actions ? (
+        <div
+          className="mt-4"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          {actions}
+        </div>
+      ) : null}
     </article>
   );
 }
