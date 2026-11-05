@@ -38,7 +38,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import type { Row, RowSelectionState } from '@tanstack/react-table';
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+} from '@tanstack/react-table';
 import type {
   AssetRegistryCategory,
   AssetRegistryResult,
@@ -192,10 +196,18 @@ export function AssetRegistryClient({
     customStatuses,
   });
 
+  // Selection is lifted out of the table so software rows can be kept to one
+  // kind at a time: an expired licence and a live one need different actions,
+  // and a mixed selection could satisfy neither.
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
   const { isMutating, performBulkStatusChange, performBulkTransfer } =
     useAssetMutations({
       setErrorMessage,
-      onSuccess: () => setRefreshNonce((n) => n + 1),
+      onSuccess: () => {
+        setRowSelection({});
+        setRefreshNonce((n) => n + 1);
+      },
       onTransferSuccess: () => {
         setIsTransferDialogOpen(false);
         setTransferSelectionRows([]);
@@ -329,24 +341,47 @@ export function AssetRegistryClient({
   // Selection actions
   // -------------------------------------------------------------------------
 
-  // Selection is lifted out of the table so software rows can be kept to one
-  // kind at a time: an expired licence and a live one need different actions,
-  // and a mixed selection could satisfy neither.
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [knownRowsById, setKnownRowsById] = useState<
+    Record<string, AssetRegistryRow>
+  >({});
   const [softwareActionRows, setSoftwareActionRows] = useState<
     AssetRegistryRow[]
   >([]);
   const [isSoftwareAssignOpen, setIsSoftwareAssignOpen] = useState(false);
   const [isSoftwareRenewOpen, setIsSoftwareRenewOpen] = useState(false);
 
+  const handleRowSelectionChange = useCallback<OnChangeFn<RowSelectionState>>(
+    (updaterOrValue) => {
+      setKnownRowsById((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const row of rows) {
+          if (next[row.id] !== row) {
+            next[row.id] = row;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+      setRowSelection(updaterOrValue);
+    },
+    [rows]
+  );
+
   const selectedSoftwareKind = useMemo<'expired' | 'available' | null>(() => {
     if (config.view !== 'software') return null;
-    const selected = filteredRows.filter((row) => rowSelection[row.id]);
+    const currentById = new Map(filteredRows.map((row) => [row.id, row]));
+    const selectedIds = Object.keys(rowSelection).filter((id) =>
+      Boolean(rowSelection[id])
+    );
+    const selected = selectedIds
+      .map((id) => currentById.get(id) ?? knownRowsById[id])
+      .filter((row): row is AssetRegistryRow => row !== undefined);
     if (selected.length === 0) return null;
     return selected.some((row) => isSoftwareLicenseExpired(row.expiryDate))
       ? 'expired'
       : 'available';
-  }, [config.view, filteredRows, rowSelection]);
+  }, [config.view, filteredRows, knownRowsById, rowSelection]);
 
   const canSelectRow = useMemo(() => {
     if (config.view !== 'software') return true;
@@ -512,7 +547,9 @@ export function AssetRegistryClient({
 
         {/* Data table / loading skeleton */}
         <div className="flex min-h-0 flex-1 flex-col">
-          {isPending ? (
+          {isPending &&
+          rows.length === 0 &&
+          Object.keys(rowSelection).length === 0 ? (
             <div className="overflow-hidden rounded-lg border border-border bg-background p-3">
               <TableSkeleton
                 rowCount={8}
@@ -523,6 +560,7 @@ export function AssetRegistryClient({
             <DataTable<AssetRegistryRow, unknown>
               columns={tableColumns}
               data={filteredRows}
+              getRowId={(row) => row.id}
               pageSizeOptions={config.rowsPerPageOptions}
               initialPageSize={config.defaultPageSize}
               defaultSorting={
@@ -537,7 +575,7 @@ export function AssetRegistryClient({
               }
               selectionActions={selectionActionsToDisplay}
               rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
+              onRowSelectionChange={handleRowSelectionChange}
               enableRowSelection={canSelectRow}
               selectionLabel={(selectedCount) =>
                 `${selectedCount} Assets Selected`
@@ -560,7 +598,9 @@ export function AssetRegistryClient({
                 )
               }
               onRowClick={navigateToRecord}
-              className="rounded-lg border-border"
+              className={`rounded-lg border-border transition-opacity ${
+                isPending ? 'opacity-60' : ''
+              }`}
             />
           )}
         </div>
@@ -580,6 +620,7 @@ export function AssetRegistryClient({
           onSubmitted={({ inserted, skipped }) => {
             setIsDisposalDialogOpen(false);
             setDisposalSelectionRows([]);
+            setRowSelection({});
             setRefreshNonce((current) => current + 1);
 
             if (skipped > 0) {
