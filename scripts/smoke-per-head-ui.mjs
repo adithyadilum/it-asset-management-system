@@ -3,26 +3,36 @@ import { createServer } from 'node:net';
 import { mkdirSync, openSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import postgres from 'postgres';
+import dotenv from 'dotenv';
 import { encode } from 'next-auth/jwt';
 import { chromium, expect } from '@playwright/test';
 
-const url = process.env.FINANCIAL_TEST_DATABASE_URL;
+const demo = process.argv.includes('--demo');
+if (demo) dotenv.config({ quiet: true });
+const url = demo
+  ? process.env.DATABASE_URL
+  : process.env.FINANCIAL_TEST_DATABASE_URL;
 if (
   !url ||
-  new URL(url).hostname !== '127.0.0.1' ||
-  new URL(url).username !== 'financial_test'
+  (!demo &&
+    (new URL(url).hostname !== '127.0.0.1' ||
+      new URL(url).username !== 'financial_test'))
 )
   throw new Error(
     'UI verification requires the isolated financial test database.'
   );
-const db = postgres(url, { max: 1 });
+const db = postgres(url, { max: 1, ssl: demo ? 'require' : false });
 const server = createServer();
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const port = server.address().port;
 await new Promise((done) => server.close(done));
 const origin = `http://127.0.0.1:${port}`,
   secret = 'isolated-ui-test-secret-at-least-32-characters';
-const directory = join(process.cwd(), 'test-results', 'per-head');
+const directory = join(
+  process.cwd(),
+  'test-results',
+  demo ? 'financial-demo' : 'per-head'
+);
 mkdirSync(directory, { recursive: true });
 const log = openSync(join(directory, 'server.log'), 'w');
 let browser, app;
@@ -114,95 +124,198 @@ try {
   await expect(
     page.getByRole('heading', { name: 'Per-head Cost Analysis', exact: true })
   ).toBeVisible();
-  await page
-    .getByRole('textbox', { name: 'Search people', exact: true })
-    .fill(admin.email);
-  await page.getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: 'Apply', exact: true })
-  ).toBeEnabled();
-  await expect(
-    page.getByRole('button', { name: /Person B.*b@test.local/ })
-  ).toHaveCount(0);
-  await page.screenshot({
-    path: join(directory, 'ledger.png'),
-    fullPage: true,
-  });
-  const downloadPromise = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Export CSV (LKR)', exact: true })
-    .click();
-  const download = await downloadPromise;
-  await download.saveAs(join(directory, 'report.csv'));
-  await page
-    .getByRole('button', { name: new RegExp(`${admin.name}.*${admin.email}`) })
-    .click();
-  await expect(
-    page.getByText('Currently allocated assets:', { exact: false })
-  ).toBeVisible();
-  await page.goto(`${origin}/financials/per-head/configuration`);
-  await expect(
-    page.getByRole('heading', {
-      name: 'Cost allocation configuration',
+  if (demo) {
+    await expect(
+      page.getByText('Cost over time', { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText('Where the cost goes', { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText('Review required', { exact: false })
+    ).toHaveCount(0);
+    await expect(page.locator('.recharts-pie-sector').first()).toBeVisible();
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('.recharts-bar-rectangle path')].some(
+        (p) => p.getBBox().height > 20
+      )
+    );
+    await page.screenshot({
+      path: join(directory, 'ledger.png'),
+      fullPage: true,
+    });
+    await page.goto(`${origin}/financials/per-head/configuration`);
+    await expect(
+      page.getByRole('heading', { name: 'Cost settings', exact: true })
+    ).toBeVisible();
+    await page.screenshot({
+      path: join(directory, 'people-settings.png'),
+      fullPage: true,
+    });
+    await page.getByRole('tab', { name: /Software/ }).click();
+    await expect(page.getByText(/unused seats/).first()).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Software/ })).toHaveAttribute(
+      'data-state',
+      'active'
+    );
+    await page.screenshot({
+      path: join(directory, 'software-settings.png'),
+      fullPage: true,
+    });
+    await page
+      .getByRole('button', { name: 'Edit', exact: true })
+      .first()
+      .click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.screenshot({
+      path: join(directory, 'software-editor.png'),
+      fullPage: true,
+    });
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel', exact: true })
+      .click();
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.goto(`${origin}/financials/per-head`);
+    await expect(
+      page.getByRole('heading', { name: 'Per-head Cost Analysis', exact: true })
+    ).toBeVisible();
+    await page.screenshot({
+      path: join(directory, 'ledger-1024.png'),
+      fullPage: true,
+    });
+    console.log(
+      'Read-only exhibition preview passed: populated charts, people, software capacity, and settings dialog.'
+    );
+  } else {
+    const search = page.getByRole('textbox', {
+      name: 'Search people',
       exact: true,
-    })
-  ).toBeVisible();
-  const basis = page
-    .getByRole('heading', { name: 'Correct asset cost basis', exact: true })
-    .locator('..');
-  await basis.getByLabel('Asset tag', { exact: true }).fill('TST-001');
-  await basis.getByLabel('Purchase date', { exact: true }).fill('2026-11-01');
-  await basis
-    .getByLabel('Total acquisition cost', { exact: true })
-    .fill('1000');
-  await basis.locator('select[name="currency"]').selectOption('USD');
-  await basis.getByLabel('Recorded rate to LKR', { exact: true }).fill('300');
-  await basis
-    .getByLabel('Residual value (purchase currency)', { exact: true })
-    .fill('100');
-  await basis.getByLabel('Useful life in months', { exact: true }).fill('12');
-  await basis.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(basis.getByRole('status')).toContainText('Saved.');
-  await page.screenshot({
-    path: join(directory, 'configuration.png'),
-    fullPage: true,
-  });
-  const [auditor] =
-    await db`UPDATE users SET role='FinancialAuditor' WHERE email='b@test.local' RETURNING id,name,email,role`;
-  const auditorContext = await browser.newContext();
-  const auditorCookie = await encode({
-    secret,
-    token: {
-      ...auditor,
-      isActive: true,
-      accessTokenExpires: Date.now() + 3600000,
-    },
-  });
-  await auditorContext.addCookies([
-    {
-      name: 'next-auth.session-token',
-      value: auditorCookie,
-      url: origin,
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
-  ]);
-  const auditorPage = await auditorContext.newPage();
-  await auditorPage.goto(`${origin}/financials/per-head`);
-  await expect(
-    auditorPage.getByRole('heading', {
-      name: 'Per-head Cost Analysis',
-      exact: true,
-    })
-  ).toBeVisible();
-  await expect(
-    auditorPage.getByRole('link', { name: 'Cost configuration', exact: true })
-  ).toHaveCount(0);
-  await auditorPage.goto(`${origin}/financials/per-head/configuration`);
-  await expect(auditorPage).toHaveURL(/\/403$/);
-  console.log(
-    'Browser verification passed: report filtering, CSV export, person drill-down, admin cost correction, and auditor access.'
-  );
+    });
+    await search.fill(admin.email);
+    await expect(
+      page.getByRole('button', { name: 'Person B', exact: false })
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: /^PA Person A/ })
+    ).toBeVisible();
+    await expect(
+      page.getByText('Review required', { exact: false })
+    ).toHaveCount(0);
+    await page.screenshot({
+      path: join(directory, 'ledger.png'),
+      fullPage: true,
+    });
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
+    await (await downloadPromise).saveAs(join(directory, 'report.csv'));
+    await page
+      .getByRole('button', { name: `View ${admin.name}'s costs`, exact: true })
+      .click();
+    await expect(
+      page.getByText('Currently allocated assets:', { exact: false })
+    ).toBeVisible();
+    await page.goto(`${origin}/financials/per-head/configuration`);
+    await expect(
+      page.getByRole('heading', { name: 'Cost settings', exact: true })
+    ).toBeVisible();
+    await page
+      .getByRole('row')
+      .filter({ hasText: admin.email })
+      .getByRole('button', { name: 'Edit', exact: true })
+      .click();
+    let dialog = page.getByRole('dialog');
+    await dialog
+      .getByRole('combobox', { name: 'Workplace', exact: true })
+      .click();
+    await page
+      .getByRole('option', { name: 'Settings Workplace', exact: true })
+      .click();
+    await dialog
+      .getByRole('button', { name: 'Save changes', exact: true })
+      .click();
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page.getByRole('row').filter({ hasText: admin.email })
+    ).toContainText('Settings Workplace');
+    await page.getByRole('tab', { name: /Equipment/ }).click();
+    await page
+      .getByRole('row')
+      .filter({ hasText: 'TST-001' })
+      .getByRole('button', { name: 'Edit', exact: true })
+      .click();
+    dialog = page.getByRole('dialog');
+    await dialog.getByRole('checkbox', { name: /Shared equipment/ }).uncheck();
+    await dialog
+      .getByRole('button', { name: 'Save changes', exact: true })
+      .click();
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page.getByRole('row').filter({ hasText: 'TST-001' })
+    ).toContainText('Assigned user');
+    await page.getByRole('tab', { name: /Software/ }).click();
+    await expect(page.getByText(/unused seats/).first()).toBeVisible();
+    await page
+      .getByRole('row')
+      .filter({ hasText: 'Test Software Model' })
+      .getByRole('button', { name: 'Edit', exact: true })
+      .click();
+    dialog = page.getByRole('dialog');
+    await dialog
+      .getByRole('spinbutton', { name: 'Total monthly price', exact: true })
+      .fill('9500');
+    await page.screenshot({
+      path: join(directory, 'software-settings.png'),
+      fullPage: true,
+    });
+    await dialog
+      .getByRole('button', { name: 'Save changes', exact: true })
+      .click();
+    await expect(dialog).toHaveCount(0);
+    const [saved] =
+      await db`SELECT amount FROM software_financial_terms WHERE amount=9500`;
+    if (!saved) throw new Error('Software settings did not persist.');
+    await page.screenshot({
+      path: join(directory, 'configuration.png'),
+      fullPage: true,
+    });
+    const [auditor] =
+      await db`UPDATE users SET role='FinancialAuditor' WHERE email='b@test.local' RETURNING id,name,email,role`;
+    const auditorContext = await browser.newContext();
+    const auditorCookie = await encode({
+      secret,
+      token: {
+        ...auditor,
+        isActive: true,
+        accessTokenExpires: Date.now() + 3600000,
+      },
+    });
+    await auditorContext.addCookies([
+      {
+        name: 'next-auth.session-token',
+        value: auditorCookie,
+        url: origin,
+        httpOnly: true,
+        sameSite: 'Lax',
+      },
+    ]);
+    const auditorPage = await auditorContext.newPage();
+    await auditorPage.goto(`${origin}/financials/per-head`);
+    await expect(
+      auditorPage.getByRole('heading', {
+        name: 'Per-head Cost Analysis',
+        exact: true,
+      })
+    ).toBeVisible();
+    await expect(
+      auditorPage.getByRole('link', { name: 'Cost settings', exact: true })
+    ).toHaveCount(0);
+    await auditorPage.goto(`${origin}/financials/per-head/configuration`);
+    await expect(auditorPage).toHaveURL(/\/403$/);
+    console.log(
+      'Browser verification passed: report filtering, CSV export, person drill-down, one-save people/equipment/software settings, and auditor access.'
+    );
+  }
 } finally {
   if (browser) await browser.close();
   if (app && app.exitCode === null && app.signalCode === null) {

@@ -1,6 +1,6 @@
 # Per-head cost analysis: implementation audit and integration plan
 
-Date: 2026-11-05. Status: implemented and verified in code; application-database migration deployment remains pending.
+Date: 2026-11-05. Status: implemented and verified; the connected Neon exhibition database has the financial migrations and populated operating history.
 
 ## Confirmed requirements
 
@@ -141,9 +141,9 @@ For existing data, profile duplicate purchases, overlapping assignments, missing
 | UI               | Add a financials feature component with period picker, summary cards, server-paginated people table, monthly trend, person drill-down, and export.                                                     |
 | Source workflows | Capture financial term data during software registration/renewal, preserve membership changes, and record effective overhead groups for assets/repair expenses.                                        |
 
-Suggested table columns: person, department/location, directly assigned assets, shared assets, software seats, physical depreciation, software usage cost, repair overhead, total period usage cost, current acquisition-value share, current book/carrying-value share, and data-quality status. Use drill-down or column visibility to keep the default table readable.
+The table shows person and department, equipment, software, maintenance, total usage cost, and current assigned book value. Drill-down retains direct/shared distinctions, software seats, acquisition shares, and source details. There is no review-status column.
 
-Summary cards should show allocated usage cost, overhead/unallocated cost, included people, average cost for included people, and current assigned value. Separate missing-data warnings from known zero cost. All filters apply on the server before grouping and pagination; summaries and exports use exactly the same filtered scope. Compute allocation denominators before applying person search/filtering, so searching for one employee cannot increase that employee's share. Fetch person detail lazily and avoid a query per person.
+Summary cards show allocated usage cost, cost per person, included people, and current assigned book value with an acquisition-value hint. Unallocated and unused-seat costs appear beneath the monthly chart. All filters apply on the server before pagination; summaries and exports use exactly the same filtered scope. Compute allocation denominators before applying person search/filtering, so searching for one employee cannot increase that employee's share. Fetch person detail lazily and avoid a query per person.
 
 The external financial API currently returns asset-level purchase/depreciation information. Do not expose person-level financial information through it automatically. A future external endpoint requires an explicit scope and API contract.
 
@@ -171,43 +171,67 @@ Audit baseline executed successfully with `npm.cmd run test:run -- src/actions/f
 
 The original planning questions have been answered. Acceptance-based custody, Asia/Colombo, and ownership-time proration were confirmed before implementation. Repair completion is the recognition date. Current values show both acquisition and book/carrying shares, separately from period expense. Average usage cost includes only people eligible during the selected period, even when another person currently holds the same asset.
 
-A later read-only data audit found **162 assets** where the existing depreciation residual differs from the purchase salvage estimate. The user confirmed that **the existing depreciation residual is authoritative and the purchase estimate must remain historical information**. Both values are preserved. These historical differences do not make a cost report incomplete or require reconciliation. Subsequent cost-basis corrections update the asset residual without replacing an existing purchase estimate; a new purchase can still capture its initial estimate. No application-database records have been changed to enforce this policy.
+A later read-only data audit found **162 assets** where the existing depreciation residual differs from the purchase salvage estimate. The user confirmed that **the existing depreciation residual is authoritative and the purchase estimate must remain historical information**. Both values are preserved. These historical differences do not make a cost report incomplete or require reconciliation. Subsequent cost-basis corrections update the asset residual without replacing an existing purchase estimate; a new purchase can still capture its initial estimate. This remains the normal editing policy. The separately authorized exhibition refresh below replaces demo procurement amounts and dates with coherent illustrative records.
 
 ## Implemented behavior
 
-- `/financials/per-head`: monthly/custom-range people ledger, asset/group filters, stable person search, sorting, server pagination, monthly cost chart, reconciliation totals, data-quality exceptions, and full filtered CSV export in LKR.
+- `/financials/per-head`: people ledger with monthly/custom ranges, a six-month default, shared Financials summary cards and filters, server pagination, a monthly stacked chart, cost breakdown, person detail, and full filtered CSV export in LKR. Review badges, warning banners, and data-status export columns have been removed.
 - Person drill-down: dated expense sources and currently allocated assets, including direct/shared/software shares and explicit unpriced current holdings.
-- `/financials/per-head/configuration`: GlobalAdmin-only membership history, asset allocation policies, software coverage/pricing/seat terms, cost-basis corrections, and verified transaction-rate corrections. FinancialAuditor can read reports but cannot configure costs.
+- `/financials/per-head/configuration`: GlobalAdmin-only Cost Settings with People, Equipment, and Software tabs. One edit dialog saves department/workplace membership, equipment allocation, or software price/capacity/coverage. Groups are connected and dated transitions closed automatically; administrators no longer create a group, close an interval, and then add another interval manually. Foreign exchange is optional under More options. FinancialAuditor can read reports but cannot configure costs.
 - Physical costs use monthly pools prorated by ownership/custody time. Software terms spread paid amounts across their dated coverage, with purchased-seat denominators. Perpetual software expense allocation does not alter its existing carried-at-cost book valuation.
-- Shared group denominators are calculated before person filtering. The report separately exposes other people's allocations when searching, so the source total still reconciles.
-- Recorded costs use LKR recognition and exact cent allocation in the per-head engine. Missing prices, rates, policy history, or ambiguous source records are surfaced rather than estimated.
+- Shared group denominators are calculated before person filtering. Team/workplace filters select current members and retain all of their costs, including software. Search and group filters update summary cards, breakdown, chart, and exports together without reallocating expenses. Internal source totals still reconcile with other people's allocations and overhead.
+- Recorded costs use LKR recognition and exact cent allocation. Missing prices, rates, policy history, or ambiguous records remain internal diagnostics; runtime calculations never invent prices. Unknown current asset amounts display an em dash.
 - Software registration captures an initial priced term when coverage/life is available. Renewal preserves dated prices and seat counts. Missing perpetual life or legacy software prices require configuration rather than an invented default.
 - Department synchronization preserves membership transitions. Disabling a user closes their open financial memberships. Reliable shared history begins at rollout; older direct custody can still be used when its timestamps are available.
 - Report source reads use a repeatable-read, read-only database transaction. Detail lines are generated only for a requested person. Bulk reads avoid a query per employee.
 - Existing financial ledgers now normalize repair currencies independently, use stored transaction FX for totals, avoid duplicate acquisition joins, and export every matching page with CSV escaping. Dashboard software estimates use paid terms; absent prices display as unknown. New asset registration persists the residual used by depreciation.
 - The disposal review query now returns the model image and the wrapper forwards it to the review panel. Changing the selected request clears previously fetched details.
 
-## Rollout and existing data
+## Exhibition data and rollout
 
-The application database was inspected using a PostgreSQL **read-only transaction**, which returned aggregate counts only. It had no duplicate purchase assets, assets without purchases, incomplete purchase dates/amounts, flagged purchase FX defaults, multiple open assignments, accepted assignments missing acceptance times, or incomplete completed-repair inputs. It did have the 162 residual/estimate discrepancies described above. The new maintenance FX column and membership-history tables were not yet present.
+The first read-only audit preceded migration deployment. A subsequent inspection on 2026-11-05 confirmed that the connected Neon database already contains the maintenance FX and financial-history tables from migrations `0004` and `0005`. Both migrations remain idempotent and are still verified on disposable PostgreSQL.
 
-Before running this version against the application database:
+The user explicitly authorized replacing the exhibition data, adding realistic history, and dropping compatibility requirements for the prior synthetic records. The financial demo refresh was applied to Neon in a transaction after a dry run. Before each applied refresh, affected tables were saved beneath the ignored `db-backups/financial-exhibition-*.json` directory. Login identities, account roles, model images, licence keys, and disposal documents were retained.
 
-1. Run `npm run financials:audit` to review the current source-data counts without changing data.
-2. Apply migrations using `npm run db:migrate` through the normal deployment process. Migration `0004_financial_input_consistency` adds maintenance FX, fills LKR rates, and fills only unambiguous missing residuals. It preserves existing residuals and finalized disposal values. Migration `0005_per_head_financial_history` adds dated financial history and bootstraps current department memberships/location cost policies at rollout time.
-3. Review asset group policies and add actual location memberships. No person-to-location history is inferred automatically.
-4. Record legacy software paid terms and perpetual allocation lives. Verify historical non-LKR repair rates. Unknown inputs remain visible as incomplete until corrected.
-5. Review representative reports with Finance before relying on their totals. Earlier shared-cost periods intentionally remain uncovered by newly created membership history.
+The refreshed dataset covers **May 2025 through 5 November 2026**:
 
-Neither migration has been applied to the connected application database during this implementation. Additive migrations were applied and reapplied only to disposable local PostgreSQL clusters. No original residuals, historical estimates, or application records were changed by the read-only audit.
+| Case                                                                    |                 Examples |
+| ----------------------------------------------------------------------- | -----------------------: |
+| Active people, with dated team/workplace memberships                    | 35 people / 78 intervals |
+| Physical assets with procurement, useful life, residual, and allocation |                      230 |
+| Primary computers assigned to people                                    |                       35 |
+| Unused purchased software seats                                         |                       42 |
+| Paid monthly, yearly, and perpetual software periods                    |                       71 |
+| Completed / active / cancelled maintenance                              |              40 / 10 / 2 |
+| Fully depreciated assets                                                |                        1 |
+| Spare / returned assets                                                 |                   37 / 7 |
+| Completed disposals                                                     |                       19 |
+| Historical returns and transfers                                        |                      140 |
+
+The fixture includes hiring, department/workplace transfers, procurement waves, accepted custody, repair interruptions, software renewals and price/capacity changes, revoked/reassigned seats, and disposal dates. Repair descriptions match the asset category. Procurement prices and USD/LKR rates are illustrative exhibition assumptions, not current market quotes. Furniture and primary computers are sufficient for the workforce; shared equipment follows workplace membership.
+
+Reproduce an update with `npm run financials:demo -- --as-of=2026-11-05` to validate and roll back, then add `--apply` to save a snapshot and commit. The command explicitly rebuilds demonstration histories and must only target an authorized demo database. Normal application workflows continue to preserve dated records.
+
+Run `npm run financials:demo:verify -- --as-of=2026-11-05` for a read-only check through the actual report loader and calculation engine. It checks all 19 monthly points, all four allocation components, unused-seat overhead, zero missing inputs, and exact cent reconciliation. No runtime financial defaults were added to populate charts.
+
+For a fresh environment, run `npm run db:migrate`, then provide actual dated memberships, equipment mappings, recorded software prices, and verified transaction rates. The exhibition seed is an explicit data-management command, never a migration or an automatic application-startup task.
 
 ## Verification completed
 
 - Initial full Vitest run: **229 files passed; 1,479 tests passed**. Database tests are skipped in the ordinary run unless an isolated test connection is supplied; they were executed successfully separately.
-- Disposable PostgreSQL: **all six migrations applied twice successfully**, followed by **eight passing integration tests** covering mixed-currency TCO, source loading/allocation, dashboard consistency, overlap rejection, renewal history, missing prices, department transitions, and preservation of historical purchase estimates when correcting the depreciation residual.
-- Production browser workflow: filtering, CSV download, person drill-down, actual admin cost correction, auditor read access, hidden configuration controls, and a 403 redirect for unauthorized configuration access all passed against isolated local data.
+- Disposable PostgreSQL: **all six migrations applied twice successfully**, followed by **eleven passing integration tests** covering mixed-currency TCO, source loading/allocation, dashboard consistency, overlap rejection, renewal history, missing prices, department transitions, and preservation of historical purchase estimates when correcting the depreciation residual.
+- Production browser workflow: filtering, CSV download, person drill-down, single-save people/equipment/software edits, auditor read access, hidden configuration controls, and a 403 redirect for unauthorized configuration access all passed against isolated local data.
 - `npm run check` passed, including repository lint and TypeScript. `npm run build` passed, including both new routes.
 - Disposal regression tests: eight relevant action/component tests passed.
 - Confirmed residual-policy follow-up: **23 targeted unit/action tests and eight PostgreSQL integration tests passed**, alongside lint and TypeScript checks. A different historical purchase estimate neither changes the depreciation calculation nor marks the report incomplete.
 
 Reproduce the database checks with `npm run test:financial-db` using local PostgreSQL binaries on PATH (or set `POSTGRES_BIN`). After building, run `npm run test:financial-ui` for the browser workflow; it uses installed Edge on Windows by default, or `FINANCIAL_BROWSER_CHANNEL` to select an installed Playwright channel. Both commands create and remove their own temporary database and never use `DATABASE_URL`. Browser artifacts are written beneath the ignored `test-results/per-head/` directory.
+
+## Exhibition follow-up verification
+
+- Full Vitest suite: **229 files passed; 1,482 tests passed**. Eleven database tests were skipped in the ordinary run and passed separately against disposable PostgreSQL.
+- Lint, TypeScript, and production build passed after the shared Financials UI changes.
+- PostgreSQL integration verifies automatic interval closure, same-day corrections, preservation of later membership history, software price updates, and rollback of renewal conflicts.
+- Isolated browser verification passed for person filtering, complete CSV export, drill-down, all three settings dialogs, and auditor permissions.
+- Read-only browser previews use the actual Neon exhibition records and check rendered chart sectors/bars at 1600px and responsive summary cards at 1024px. Screenshots are saved under ignored `test-results/financial-demo/`.
+- `node scripts/smoke-per-head-ui.mjs --demo` is an explicit **read-only** preview against `DATABASE_URL`. Without that flag, the browser script refuses any connection except its disposable local test database. Demo preview never saves settings or changes roles.

@@ -24,6 +24,8 @@
     "test:financial-db": "node scripts/test-financial-database.mjs",
     "test:financial-ui": "node scripts/test-financial-database.mjs --ui",
     "financials:audit": "node scripts/audit-financial-data.mjs",
+    "financials:demo": "node scripts/seed-financial-demo.mjs",
+    "financials:demo:verify": "node --conditions=react-server --import tsx scripts/verify-financial-demo.mts",
     "test:coverage": "vitest run --coverage --pool=forks --maxWorkers=4",
     "test:ui": "vitest --ui",
     "test:db:up": "docker-compose -f docker-compose.test.yml up -d --wait",
