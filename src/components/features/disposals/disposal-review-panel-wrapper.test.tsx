@@ -8,11 +8,18 @@ vi.mock('@/actions/disposals/get-review-details', () => ({
 }));
 
 vi.mock('./disposal-review-panel', () => ({
-  DisposalReviewPanel: ({ isOpen, onReject, onApprove, serialNumber }: any) => {
+  DisposalReviewPanel: ({
+    isOpen,
+    onReject,
+    onApprove,
+    serialNumber,
+    imageUrl,
+  }: any) => {
     if (!isOpen) return null;
     return (
       <div data-testid="disposal-review-panel">
         <div>Serial: {serialNumber}</div>
+        <div>Image: {imageUrl}</div>
         <button onClick={onReject}>Reject Action</button>
         <button onClick={onApprove}>Approve Action</button>
       </div>
@@ -57,6 +64,7 @@ describe('DisposalReviewPanelWrapper', () => {
     vi.clearAllMocks();
     (getDisposalReviewDetails as any).mockResolvedValue({
       serialNumber: 'SN-123',
+      imageUrl: '/models/laptop.png',
       category: 'Laptop',
       brand: 'Dell',
       justification: 'Unrepairable',
@@ -75,6 +83,7 @@ describe('DisposalReviewPanelWrapper', () => {
     await waitFor(() => {
       expect(getDisposalReviewDetails).toHaveBeenCalledWith(1);
       expect(screen.getByText('Serial: SN-123')).toBeInTheDocument();
+      expect(screen.getByText('Image: /models/laptop.png')).toBeInTheDocument();
     });
   });
 
