@@ -41,6 +41,7 @@ Central index for all project documentation for the **IT Asset Management System
 ### Design — Business Logic
 
 - [Asset Lifecycle State Machine](2_design/05_business_logic/asset-lifecycle.md)
+- [Per-head Cost Analysis: Audit & Integration Plan](2_design/05_business_logic/per-head-cost-analysis.md)
 - [Sequence Diagrams](2_design/05_business_logic/sequence-diagrams.md)
 - [Tethered Scanner (WebSocket Auto-Link)](2_design/05_business_logic/tethered-scanner.md)
 - [Digital Acceptance Workflow](2_design/05_business_logic/digital-acceptance.md)
