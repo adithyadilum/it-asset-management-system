@@ -35,7 +35,7 @@ export function DisposalHistoryGrid({
   initialData,
   pageCount = 1,
   currentPage = 1,
-  pageSize = 10,
+  pageSize = 16,
   searchQuery = '',
   onRowClick,
 }: DisposalHistoryGridProps) {
@@ -271,7 +271,8 @@ export function DisposalHistoryGrid({
           pageCount={pageCount}
           paginationState={paginationState}
           onPaginationChange={handlePaginationChange}
-          pageSizeOptions={[10, 20, 50]}
+          initialPageSize={16}
+          pageSizeOptions={[16, 24, 32, 48]}
           className="rounded-lg border-border"
           onRowClick={(
             row: { original?: HistoryDisposalRow } | HistoryDisposalRow

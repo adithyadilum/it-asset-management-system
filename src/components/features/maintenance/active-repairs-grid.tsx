@@ -93,8 +93,8 @@ export function ActiveRepairsGrid({
     <DataTable
       columns={activeRepairsColumns}
       data={tickets}
-      pageSizeOptions={[10, 20, 30, 50]}
-      initialPageSize={10}
+      pageSizeOptions={[16, 24, 32, 48]}
+      initialPageSize={16}
       onRowClick={(row) => onRowClick(row)}
       enableRowSelection={false}
       enableRowScroll={true}

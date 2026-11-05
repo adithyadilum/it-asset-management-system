@@ -283,8 +283,8 @@ export function RolesManagementTable({
           data={users}
           enableRowScroll={true}
           enableRowSelection={false}
-          initialPageSize={50}
-          pageSizeOptions={[10, 20, 50, 100]}
+          initialPageSize={16}
+          pageSizeOptions={[16, 24, 32, 48]}
           className="flex-1 border-border"
           emptyState={{
             title: 'No users found',

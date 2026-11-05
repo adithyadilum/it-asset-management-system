@@ -265,8 +265,8 @@ export function MaintenanceTabs({
                     <DataTable
                       columns={pendingReviewColumns}
                       data={filteredPendingTickets}
-                      pageSizeOptions={[10, 20, 30, 50]}
-                      initialPageSize={10}
+                      pageSizeOptions={[16, 24, 32, 48]}
+                      initialPageSize={16}
                       onRowClick={(row) => onRowClick(row)}
                       emptyState={{
                         title: 'No pending maintenance tickets found',

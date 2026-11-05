@@ -198,8 +198,8 @@ export function PendingDisposalsGrid({
         <DataTable<PendingDisposalRow, unknown>
           columns={columns}
           data={filteredData}
-          initialPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
+          initialPageSize={16}
+          pageSizeOptions={[16, 24, 32, 48]}
           className="rounded-lg border-border"
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
