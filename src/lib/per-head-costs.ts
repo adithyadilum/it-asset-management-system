@@ -119,6 +119,7 @@ export function calculatePerHeadCosts(
     }
   >();
   const trends = new Map<string, { allocated: bigint; overhead: bigint }>();
+  const personMonths = new Map<string, Map<string, bigint>>();
   let sourceTotal = BigInt(0),
     allocatedTotal = BigInt(0),
     unallocated = BigInt(0),
@@ -215,6 +216,9 @@ export function calculatePerHeadCosts(
     for (const [id, value] of recipients) {
       if (!enroll(id)) continue;
       costs.get(id)![component] += value;
+      const monthly = personMonths.get(id) ?? new Map<string, bigint>();
+      monthly.set(month, (monthly.get(month) ?? BigInt(0)) + value);
+      personMonths.set(id, monthly);
       assigned += value;
       if (
         options.detailPersonId !== null &&
@@ -772,6 +776,15 @@ export function calculatePerHeadCosts(
     people: rows,
     details,
     currentAssets,
+    personTrend: Object.fromEntries(
+      [...personMonths].map(([id, months]) => [
+        id,
+        [...months].map(([month, amount]) => ({
+          month,
+          amount: money(amount),
+        })),
+      ])
+    ),
     summary: {
       sourceCost: money(sourceTotal),
       allocatedCost: money(allocatedTotal),

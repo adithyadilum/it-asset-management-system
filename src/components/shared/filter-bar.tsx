@@ -36,6 +36,8 @@ export interface FilterBarProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
+  searchLabel?: string;
+  allowedOperators?: FilterOperator[];
   fields: FilterFieldConfig[];
   appliedFilters: AppliedFilter[];
   onApplyFilter: (filter: AppliedFilter) => void;
@@ -49,6 +51,8 @@ export function FilterBar({
   searchQuery,
   onSearchChange,
   searchPlaceholder = 'Search...',
+  searchLabel,
+  allowedOperators = ['is', 'is not'],
   fields,
   appliedFilters,
   onApplyFilter,
@@ -61,7 +65,9 @@ export function FilterBar({
   const [draftField, setDraftField] = useState<string>(
     defaultField || fields[0]?.value || ''
   );
-  const [draftOperator, setDraftOperator] = useState<FilterOperator>('is');
+  const [draftOperator, setDraftOperator] = useState<FilterOperator>(
+    allowedOperators[0] ?? 'is'
+  );
   const [draftValue, setDraftValue] = useState<string>('');
 
   const currentFieldConfig = fields.find((f) => f.value === draftField);
@@ -93,6 +99,7 @@ export function FilterBar({
         <div className="relative w-full max-w-[320px] flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label={searchLabel ?? searchPlaceholder}
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -159,24 +166,28 @@ export function FilterBar({
                 </div>
 
                 <div className="flex items-center gap-4 py-1">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-                    <input
-                      type="radio"
-                      className="size-4 accent-primary"
-                      checked={draftOperator === 'is'}
-                      onChange={() => setDraftOperator('is')}
-                    />
-                    is
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-                    <input
-                      type="radio"
-                      className="size-4 accent-primary"
-                      checked={draftOperator === 'is not'}
-                      onChange={() => setDraftOperator('is not')}
-                    />
-                    is not
-                  </label>
+                  {allowedOperators.includes('is') && (
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        className="size-4 accent-primary"
+                        checked={draftOperator === 'is'}
+                        onChange={() => setDraftOperator('is')}
+                      />
+                      is
+                    </label>
+                  )}
+                  {allowedOperators.includes('is not') && (
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        className="size-4 accent-primary"
+                        checked={draftOperator === 'is not'}
+                        onChange={() => setDraftOperator('is not')}
+                      />
+                      is not
+                    </label>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

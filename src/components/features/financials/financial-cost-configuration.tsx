@@ -1,552 +1,842 @@
 'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  ArrowLeft,
+  Building2,
+  Laptop,
+  Search,
+  Users,
+  Check,
+  Pencil,
+  Layers3,
+} from 'lucide-react';
+import {
+  getCostSettings,
+  updatePersonCostSettings,
+  updateEquipmentCostSettings,
+  updateSoftwareCostSettings,
+} from '@/actions/cost-settings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  correctAssetCostBasis,
-  correctRecordedExchangeRate,
-  createFinancialGroup,
-  saveAssetCostPolicy,
-  saveFinancialMembership,
-  saveSoftwareFinancialTerm,
-  type getFinancialConfiguration,
-} from '@/actions/financial-configuration';
-import { localDate } from '@/lib/reporting-time';
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatMoneyByCurrency } from '@/lib/currency';
+import { addMonths, localDate, reportDate } from '@/lib/reporting-time';
+import { tiqriToast } from '@/components/shared/sonner';
 
-type Configuration = Awaited<ReturnType<typeof getFinancialConfiguration>>;
-const text = (form: FormData, key: string) =>
-  String(form.get(key) ?? '').trim();
-const optional = (form: FormData, key: string) => text(form, key) || undefined;
-const number = (form: FormData, key: string) => Number(text(form, key));
-const selectClass =
-  'h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
-
-function Field({
-  label,
+type Settings = Awaited<ReturnType<typeof getCostSettings>>;
+type Person = Settings['people'][number];
+type Equipment = Settings['equipment'][number];
+type Software = Settings['software'][number];
+type Selection =
+  | { kind: 'people'; row: Person }
+  | { kind: 'equipment'; row: Equipment }
+  | { kind: 'software'; row: Software };
+function SettingsSelect({
+  id,
   name,
-  type = 'text',
+  defaultValue,
   value,
-  required = true,
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  value?: string | number;
-  required?: boolean;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      {label}
-      <Input
-        name={name}
-        type={type}
-        defaultValue={value}
-        required={required}
-        step={type === 'number' ? 'any' : undefined}
-      />
-    </label>
-  );
-}
-function Form({
-  title,
-  description,
+  onValueChange,
+  placeholder,
   children,
-  onSave,
 }: {
-  title: string;
-  description: string;
+  id: string;
+  name?: string;
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  placeholder?: string;
   children: ReactNode;
-  onSave: (form: FormData) => Promise<void>;
 }) {
-  const [pending, startTransition] = useTransition(),
-    [message, setMessage] = useState(''),
-    [error, setError] = useState('');
-  const router = useRouter();
   return (
-    <section className="rounded-xl border bg-card p-5">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="my-2 text-sm text-muted-foreground">{description}</p>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          const values = new FormData(event.currentTarget);
-          setError('');
-          setMessage('');
-          startTransition(async () => {
-            try {
-              await onSave(values);
-              setMessage('Saved. Reports will use the corrected inputs.');
-              router.refresh();
-            } catch (e) {
-              setError(e instanceof Error ? e.message : 'Could not save.');
-            }
-          });
-        }}
-      >
-        <fieldset disabled={pending} className="grid gap-3 md:grid-cols-3">
-          {children}
-          <div className="flex items-end">
-            <Button type="submit">{pending ? 'Saving…' : 'Save'}</Button>
-          </div>
-        </fieldset>
-        {error && (
-          <p role="alert" className="mt-3 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        {message && (
-          <p role="status" className="mt-3 text-sm text-emerald-700">
-            {message}
-          </p>
-        )}
-      </form>
-    </section>
+    <Select
+      name={name}
+      defaultValue={defaultValue}
+      value={value}
+      onValueChange={onValueChange}
+    >
+      <SelectTrigger id={id} className="h-10 w-full">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>{children}</SelectContent>
+    </Select>
   );
 }
-function History<T extends { id: number }>({
+const value = (form: FormData, key: string) => String(form.get(key) ?? '');
+
+function SettingsRows<T extends { id: string }>({
   rows,
+  columns,
   onEdit,
-  render,
 }: {
   rows: T[];
+  columns: { title: string; render: (row: T) => ReactNode }[];
   onEdit: (row: T) => void;
-  render: (row: T) => ReactNode;
 }) {
   const [page, setPage] = useState(0),
-    size = 12;
+    size = 12,
+    current = Math.min(page, Math.max(0, Math.ceil(rows.length / size) - 1));
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <ul className="divide-y">
-        {rows.slice(page * size, (page + 1) * size).map((row) => (
-          <li
-            key={row.id}
-            className="flex items-center justify-between gap-3 py-2 text-sm"
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+            <tr>
+              {columns.map((c) => (
+                <th key={c.title} className="px-5 py-3.5 font-medium">
+                  {c.title}
+                </th>
+              ))}
+              <th className="w-24 px-5 py-3.5">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {rows.slice(current * size, (current + 1) * size).map((row) => (
+              <tr key={row.id} className="transition-colors hover:bg-muted/30">
+                {columns.map((c) => (
+                  <td key={c.title} className="px-5 py-4">
+                    {c.render(row)}
+                  </td>
+                ))}
+                <td className="px-5 py-4 text-right">
+                  <Button variant="ghost" size="sm" onClick={() => onEdit(row)}>
+                    <Pencil className="mr-1.5 size-3.5" />
+                    Edit
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rows.length === 0 && (
+          <div className="px-5 py-16 text-center text-muted-foreground">
+            No matches. Try another name or asset.
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between border-t px-5 py-3 text-xs text-muted-foreground">
+        <span>
+          {rows.length ? current * size + 1 : 0}–
+          {Math.min((current + 1) * size, rows.length)} of {rows.length}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={current === 0}
+            onClick={() => setPage(current - 1)}
           >
-            <div>{render(row)}</div>
-            <Button variant="outline" size="sm" onClick={() => onEdit(row)}>
-              Edit #{row.id}
-            </Button>
-          </li>
-        ))}
-      </ul>
-      {rows.length === 0 && (
-        <p className="text-sm text-muted-foreground">No records yet.</p>
-      )}
-      <div className="mt-3 flex items-center justify-end gap-3 text-sm">
-        <span>{rows.length} records</span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page === 0}
-          onClick={() => setPage(page - 1)}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={(page + 1) * size >= rows.length}
-          onClick={() => setPage(page + 1)}
-        >
-          Next
-        </Button>
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={(current + 1) * size >= rows.length}
+            onClick={() => setPage(current + 1)}
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
-
-function Group({
-  value,
-  groups,
+function SaveForm({
+  children,
+  onSave,
+  onSaved,
 }: {
-  value?: number;
-  groups: Configuration['groups'];
+  children: ReactNode;
+  onSave: (
+    form: FormData
+  ) => Promise<{ success: true } | { success: false; error: string }>;
+  onSaved: () => void;
+}) {
+  const [pending, startTransition] = useTransition(),
+    [error, setError] = useState('');
+  const router = useRouter();
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        setError('');
+        startTransition(async () => {
+          try {
+            const result = await onSave(form);
+            if (!result.success) {
+              setError(result.error);
+              return;
+            }
+            tiqriToast.success('Cost settings updated.');
+            router.refresh();
+            onSaved();
+          } catch {
+            setError('Could not save changes. Please try again.');
+          }
+        });
+      }}
+    >
+      <fieldset disabled={pending} className="space-y-5 pt-3">
+        {children}
+        {error && (
+          <p
+            role="alert"
+            className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        )}
+        <div className="flex items-center justify-end gap-2 border-t pt-4">
+          <Button type="button" variant="outline" onClick={onSaved}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            <Check className="mr-2 size-4" />
+            {pending ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      </fieldset>
+    </form>
+  );
+}
+function Field({
+  label,
+  id,
+  children,
+  hint,
+}: {
+  label: string;
+  id: string;
+  children: ReactNode;
+  hint?: string;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      Cost group
-      <select
-        name="groupId"
-        required
-        defaultValue={value ?? ''}
-        className={selectClass}
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+function PersonForm({
+  row,
+  data,
+  onSaved,
+}: {
+  row: Person;
+  data: Settings;
+  onSaved: () => void;
+}) {
+  return (
+    <SaveForm
+      onSaved={onSaved}
+      onSave={(form) =>
+        updatePersonCostSettings({
+          userId: row.id,
+          departmentId: Number(value(form, 'department')),
+          locationId:
+            value(form, 'location') === 'none'
+              ? null
+              : Number(value(form, 'location')),
+          from: value(form, 'from'),
+        })
+      }
+    >
+      <Field label="Department" id="person-department">
+        <SettingsSelect
+          id="person-department"
+          name="department"
+          defaultValue={row.departmentId ? String(row.departmentId) : undefined}
+          placeholder="Choose a department"
+        >
+          {data.departments.map((d) => (
+            <SelectItem value={String(d.id)} key={d.id}>
+              {d.name}
+            </SelectItem>
+          ))}
+        </SettingsSelect>
+      </Field>
+      <Field
+        label="Workplace"
+        id="person-location"
+        hint="Shared equipment and workplace costs are split equally among the people based here."
       >
-        <option value="" disabled>
-          Select group
-        </option>
-        {groups.map((g) => (
-          <option value={g.id} key={g.id}>
-            {`${g.departmentId ? 'Department' : 'Location'}: ${g.name}`}
-          </option>
-        ))}
-      </select>
-    </label>
+        <SettingsSelect
+          id="person-location"
+          name="location"
+          defaultValue={row.locationId ? String(row.locationId) : 'none'}
+        >
+          <SelectItem value="none">No shared workplace</SelectItem>
+          {data.locations.map((l) => (
+            <SelectItem value={String(l.id)} key={l.id}>
+              {l.name}
+            </SelectItem>
+          ))}
+        </SettingsSelect>
+      </Field>
+      <Field
+        label="Effective from"
+        id="person-from"
+        hint="Previous team and workplace assignments are kept automatically."
+      >
+        <Input
+          id="person-from"
+          name="from"
+          type="date"
+          defaultValue={data.today}
+          max={data.today}
+          required
+        />
+      </Field>
+    </SaveForm>
+  );
+}
+function EquipmentForm({
+  row,
+  data,
+  onSaved,
+}: {
+  row: Equipment;
+  data: Settings;
+  onSaved: () => void;
+}) {
+  return (
+    <SaveForm
+      onSaved={onSaved}
+      onSave={(form) =>
+        updateEquipmentCostSettings({
+          assetId: row.id,
+          allocation: value(form, 'allocation'),
+          shared: form.has('shared'),
+          from: value(form, 'from'),
+        })
+      }
+    >
+      <Field label="Allocate costs to" id="equipment-allocation">
+        <SettingsSelect
+          id="equipment-allocation"
+          name="allocation"
+          defaultValue={row.allocation || undefined}
+          placeholder="Choose a team or workplace"
+        >
+          <SelectGroup>
+            <SelectLabel>Workplaces</SelectLabel>
+            {data.locations.map((l) => (
+              <SelectItem key={l.id} value={`location:${l.id}`}>
+                {l.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+          <SelectGroup>
+            <SelectLabel>Departments</SelectLabel>
+            {data.departments.map((d) => (
+              <SelectItem key={d.id} value={`department:${d.id}`}>
+                {d.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SettingsSelect>
+      </Field>
+      <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-muted/20 p-4">
+        <input
+          name="shared"
+          type="checkbox"
+          className="mt-0.5 size-4 accent-primary"
+          defaultChecked={row.shared}
+        />
+        <span>
+          <span className="block text-sm font-medium">Shared equipment</span>
+          <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+            Split costs across this team. Personal assignments always follow the
+            person using the equipment.
+          </span>
+        </span>
+      </label>
+      <Field
+        label="Effective from"
+        id="equipment-from"
+        hint="Earlier allocations are retained. There's no need to close them first."
+      >
+        <Input
+          id="equipment-from"
+          name="from"
+          type="date"
+          defaultValue={data.today}
+          max={data.today}
+          required
+        />
+      </Field>
+    </SaveForm>
+  );
+}
+function SoftwareForm({
+  row,
+  data,
+  onSaved,
+}: {
+  row: Software;
+  data: Settings;
+  onSaved: () => void;
+}) {
+  const [cycle, setCycle] = useState<'monthly' | 'annual' | 'perpetual'>(() =>
+    row.licenseType === 'Perpetual'
+      ? 'perpetual'
+      : row.term &&
+          reportDate(row.term.to) - reportDate(row.term.from) > 180 * 86400000
+        ? 'annual'
+        : 'monthly'
+  );
+  const [currency, setCurrency] = useState(row.term?.currency ?? 'LKR'),
+    [from, setFrom] = useState(row.term?.from ?? data.today),
+    [life, setLife] = useState(row.term?.lifeMonths ?? 36);
+  const until = Number.isFinite(reportDate(from))
+    ? localDate(
+        addMonths(
+          reportDate(from),
+          cycle === 'annual' ? 12 : cycle === 'monthly' ? 1 : life
+        ) - 86400000
+      )
+    : '';
+  return (
+    <SaveForm
+      onSaved={onSaved}
+      onSave={(form) =>
+        updateSoftwareCostSettings({
+          licenseId: row.id,
+          termId: row.term?.id,
+          amount: value(form, 'amount'),
+          currency: currency as 'LKR' | 'USD' | 'NOK',
+          seats: Number(value(form, 'seats')),
+          cycle,
+          from,
+          lifeMonths: cycle === 'perpetual' ? life : undefined,
+          exchangeRate: value(form, 'rate') || undefined,
+        })
+      }
+    >
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Billing" id="software-cycle">
+          <SettingsSelect
+            id="software-cycle"
+            value={cycle}
+            onValueChange={(next) => setCycle(next as typeof cycle)}
+          >
+            <SelectItem value="monthly">Monthly</SelectItem>
+            <SelectItem value="annual">Yearly</SelectItem>
+            <SelectItem value="perpetual">One-time purchase</SelectItem>
+          </SettingsSelect>
+        </Field>
+        <Field
+          label="Purchased seats"
+          id="software-seats"
+          hint={`${row.assigned} seats currently assigned`}
+        >
+          <Input
+            id="software-seats"
+            name="seats"
+            type="number"
+            min={Math.max(1, row.assigned)}
+            max={100000}
+            defaultValue={row.term?.seats ?? row.seats}
+            required
+          />
+        </Field>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-4">
+        <Field
+          label={
+            cycle === 'annual'
+              ? 'Total yearly price'
+              : cycle === 'monthly'
+                ? 'Total monthly price'
+                : 'Purchase price'
+          }
+          id="software-price"
+          hint="Price for all purchased seats, not the price per person."
+        >
+          <Input
+            id="software-price"
+            name="amount"
+            type="number"
+            min="0"
+            step="0.01"
+            defaultValue={row.term?.amount}
+            placeholder="0.00"
+            required
+          />
+        </Field>
+        <Field label="Currency" id="software-currency">
+          <SettingsSelect
+            id="software-currency"
+            value={currency}
+            onValueChange={setCurrency}
+          >
+            {['LKR', 'USD', 'NOK'].map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SettingsSelect>
+        </Field>
+      </div>
+      {cycle === 'perpetual' && (
+        <Field label="Spread cost over" id="software-life">
+          <SettingsSelect
+            id="software-life"
+            value={String(life)}
+            onValueChange={(next) => setLife(Number(next))}
+          >
+            {[12, 24, 36, 48, 60, 84].map((months) => (
+              <SelectItem key={months} value={String(months)}>
+                {months / 12} {months === 12 ? 'year' : 'years'}
+              </SelectItem>
+            ))}
+          </SettingsSelect>
+        </Field>
+      )}
+      <Field
+        label="Paid coverage starts"
+        id="software-from"
+        hint={
+          until
+            ? `Covers costs through ${new Date(`${until}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}.`
+            : undefined
+        }
+      >
+        <Input
+          id="software-from"
+          type="date"
+          value={from}
+          onChange={(event) => setFrom(event.target.value)}
+          required
+        />
+      </Field>
+      {currency !== 'LKR' && (
+        <details className="rounded-lg border p-3">
+          <summary className="cursor-pointer text-sm text-muted-foreground">
+            More options
+          </summary>
+          <div className="pt-4">
+            <Field
+              label="Exchange rate to LKR"
+              id="software-rate"
+              hint="Leave blank to capture the available exchange rate automatically."
+            >
+              <Input
+                id="software-rate"
+                name="rate"
+                type="number"
+                min="0.000001"
+                step="0.000001"
+                defaultValue={
+                  currency === row.term?.currency ? row.term.exchangeRate : ''
+                }
+              />
+            </Field>
+          </div>
+        </details>
+      )}
+    </SaveForm>
   );
 }
 
-export function FinancialCostConfiguration({ data }: { data: Configuration }) {
-  const [member, setMember] = useState<
-      Configuration['memberships'][number] | null
-    >(null),
-    [policy, setPolicy] = useState<Configuration['policies'][number] | null>(
-      null
-    ),
-    [term, setTerm] = useState<Configuration['terms'][number] | null>(null);
-  const [today] = useState(() => localDate(Date.now()));
-  const name = (id: number) => {
-    const group = data.groups.find((g) => g.id === id);
-    return group
-      ? `${group.departmentId ? 'Department' : 'Location'}: ${group.name}`
-      : `Group ${id}`;
-  };
-
+export function FinancialCostConfiguration({ data }: { data: Settings }) {
+  const [tab, setTab] = useState('people'),
+    [search, setSearch] = useState(''),
+    [selected, setSelected] = useState<Selection | null>(null);
+  const match = (...parts: (string | null)[]) =>
+    parts.join(' ').toLocaleLowerCase().includes(search.toLocaleLowerCase());
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-7">
       <div>
         <Link
-          className="text-sm text-primary hover:underline"
           href="/financials/per-head"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
-          ← Per-head Cost Analysis
+          <ArrowLeft className="size-4" />
+          Back to cost analysis
         </Link>
-        <h1 className="mt-3 text-2xl font-semibold">
-          Cost allocation configuration
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Maintain dated cost inputs and membership. Corrections recalculate
-          past reports and are recorded in the audit log. Dates use
-          Asia/Colombo; end dates below are not included.
-        </p>
+        <div className="mt-5 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Cost settings
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Manage teams, shared equipment and software prices in one place.
+            </p>
+          </div>
+          <div className="hidden items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground sm:flex">
+            <Building2 className="size-3.5" />
+            Teams and workplaces connect automatically
+          </div>
+        </div>
       </div>
-      <Form
-        title="Cost groups"
-        description="Create a group for a department or location added after rollout. People share equipment and repair overhead equally within the selected group."
-        onSave={async (form) => {
-          const [kind, targetId] = text(form, 'target').split(':');
-          await createFinancialGroup({
-            kind: kind as 'department' | 'location',
-            targetId: Number(targetId),
-          });
+      <Tabs
+        value={tab}
+        onValueChange={(next) => {
+          setTab(next);
+          setSearch('');
         }}
       >
-        <label className="flex flex-col gap-1 text-sm">
-          Department or location
-          <select
-            className={selectClass}
-            name="target"
-            required
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Select target
-            </option>
-            {data.departments.map((d) => (
-              <option key={`d${d.id}`} value={`department:${d.id}`}>
-                Department: {d.name}
-              </option>
-            ))}
-            {data.locations.map((l) => (
-              <option key={`l${l.id}`} value={`location:${l.id}`}>
-                Location: {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </Form>
-      <Form
-        key={`member:${member?.id ?? 'new'}:${member?.validTo}`}
-        title={member ? `Edit membership #${member.id}` : 'Add membership'}
-        description="Add the people who belong to each location or department. Earlier shared-cost history cannot be inferred from today's membership."
-        onSave={async (form) => {
-          await saveFinancialMembership({
-            id: member?.id,
-            email: text(form, 'email'),
-            groupId: number(form, 'groupId'),
-            validFrom: text(form, 'validFrom'),
-            validTo: optional(form, 'validTo'),
-            reason: text(form, 'reason'),
-          });
-          setMember(null);
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+          <TabsList variant="line">
+            <TabsTrigger value="people">
+              <Users className="size-4" />
+              People
+              <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-xs">
+                {data.people.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="equipment">
+              <Laptop className="size-4" />
+              Equipment
+              <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-xs">
+                {data.equipment.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="software">
+              <Layers3 className="size-4" />
+              Software
+              <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-xs">
+                {data.software.length}
+              </span>
+            </TabsTrigger>
+          </TabsList>
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" />
+            <Input
+              aria-label="Search cost settings"
+              className="h-10 pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={
+                tab === 'people'
+                  ? 'Find a person or team…'
+                  : tab === 'equipment'
+                    ? 'Find equipment…'
+                    : 'Find a software product…'
+              }
+            />
+          </div>
+        </div>
+      </Tabs>
+      {tab === 'people' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            A person&apos;s department and workplace determine their share of
+            common costs.
+          </p>
+          <SettingsRows
+            key={`people:${search}`}
+            rows={data.people.filter((p) =>
+              match(p.name, p.email, p.department, p.location)
+            )}
+            onEdit={(row) => setSelected({ kind: 'people', row })}
+            columns={[
+              {
+                title: 'Person',
+                render: (p) => (
+                  <div>
+                    <p className="font-medium">{p.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {p.email}
+                    </p>
+                  </div>
+                ),
+              },
+              { title: 'Department', render: (p) => p.department },
+              {
+                title: 'Workplace',
+                render: (p) => (
+                  <span className="text-muted-foreground">{p.location}</span>
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
+      {tab === 'equipment' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Choose a team or workplace. Personal equipment follows its assigned
+            user automatically.
+          </p>
+          <SettingsRows
+            key={`equipment:${search}`}
+            rows={data.equipment.filter((a) =>
+              match(a.name, a.tag, a.category, a.allocationName)
+            )}
+            onEdit={(row) => setSelected({ kind: 'equipment', row })}
+            columns={[
+              {
+                title: 'Equipment',
+                render: (a) => (
+                  <div>
+                    <p className="font-medium">{a.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {a.tag} · {a.category}
+                    </p>
+                  </div>
+                ),
+              },
+              { title: 'Cost allocation', render: (a) => a.allocationName },
+              {
+                title: 'Usage',
+                render: (a) => (
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs">
+                    {a.shared ? 'Shared equipment' : 'Assigned user'}
+                  </span>
+                ),
+              },
+              {
+                title: 'Asset status',
+                render: (a) => (
+                  <span className="text-muted-foreground">{a.status}</span>
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
+      {tab === 'software' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Set the price once. Seat costs and unused capacity are calculated
+            automatically.
+          </p>
+          <SettingsRows
+            key={`software:${search}`}
+            rows={data.software.filter((s) => match(s.name, s.tag))}
+            onEdit={(row) => setSelected({ kind: 'software', row })}
+            columns={[
+              {
+                title: 'Product',
+                render: (s) => (
+                  <div>
+                    <p className="font-medium">{s.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {s.licenseType === 'Perpetual'
+                        ? 'One-time licence'
+                        : 'Subscription'}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                title: 'Seats',
+                render: (s) => (
+                  <div className="min-w-24">
+                    <p>
+                      {s.assigned}{' '}
+                      <span className="text-muted-foreground">
+                        of {s.seats} assigned
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {Math.max(0, s.seats - s.assigned)} unused seats
+                    </p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{
+                          width: `${Math.min(100, (s.assigned / s.seats) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                title: 'Paid price',
+                render: (s) =>
+                  s.term?.amount
+                    ? formatMoneyByCurrency(s.term.amount, s.term.currency)
+                    : '—',
+              },
+              {
+                title: 'Coverage ends',
+                render: (s) =>
+                  s.term
+                    ? new Date(
+                        reportDate(s.term.to) - 86400000
+                      ).toLocaleDateString('en-GB', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        timeZone: 'Asia/Colombo',
+                      })
+                    : '—',
+              },
+            ]}
+          />
+        </div>
+      )}
+      <Dialog
+        open={selected != null}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
         }}
       >
-        <Field
-          label="Person email"
-          name="email"
-          type="email"
-          value={member?.email}
-        />
-        <Group groups={data.groups} value={member?.groupId} />
-        <Field
-          label="Start date"
-          name="validFrom"
-          type="date"
-          value={member?.validFrom ?? today}
-        />
-        <Field
-          label="End date (optional)"
-          name="validTo"
-          type="date"
-          value={member?.validTo}
-          required={false}
-        />
-        <Field label="Reason for change" name="reason" value={member?.reason} />
-        {member && (
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => setMember(null)}
-          >
-            Cancel edit
-          </Button>
-        )}
-      </Form>
-      <History
-        rows={data.memberships}
-        onEdit={setMember}
-        render={(m) => (
-          <>
-            <strong>{m.email}</strong> · {name(m.groupId)}
-            <br />
-            {m.validFrom} to {m.validTo || 'ongoing'} · {m.reason}
-          </>
-        )}
-      />
-      <Form
-        key={`policy:${policy?.id ?? 'new'}:${policy?.validTo}`}
-        title={
-          policy ? `Edit asset policy #${policy.id}` : 'Add asset cost policy'
-        }
-        description="Select one department or location for shared equipment and repair overhead. Direct accepted custody takes precedence over shared equipment allocation. End the previous policy before adding a new one."
-        onSave={async (form) => {
-          await saveAssetCostPolicy({
-            id: policy?.id,
-            assetTag: text(form, 'assetTag'),
-            groupId: number(form, 'groupId'),
-            shared: text(form, 'shared') === 'yes',
-            validFrom: text(form, 'validFrom'),
-            validTo: optional(form, 'validTo'),
-          });
-          setPolicy(null);
-        }}
-      >
-        <Field label="Asset tag" name="assetTag" value={policy?.assetTag} />
-        <Group groups={data.groups} value={policy?.groupId} />
-        <label className="flex flex-col gap-1 text-sm">
-          Equipment without a direct custodian
-          <select
-            className={selectClass}
-            name="shared"
-            defaultValue={policy?.shared ? 'yes' : 'no'}
-          >
-            <option value="no">Keep as unallocated overhead</option>
-            <option value="yes">Share among group members</option>
-          </select>
-        </label>
-        <Field
-          label="Start date"
-          name="validFrom"
-          type="date"
-          value={policy?.validFrom ?? today}
-        />
-        <Field
-          label="End date (optional)"
-          name="validTo"
-          type="date"
-          value={policy?.validTo}
-          required={false}
-        />
-        {policy && (
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => setPolicy(null)}
-          >
-            Cancel edit
-          </Button>
-        )}
-      </Form>
-      <History
-        rows={data.policies}
-        onEdit={setPolicy}
-        render={(p) => (
-          <>
-            <strong>{p.assetTag}</strong> · {name(p.groupId)} ·{' '}
-            {p.shared ? 'Shared equipment' : 'Direct / overhead'}
-            <br />
-            {p.validFrom} to {p.validTo || 'ongoing'}
-          </>
-        )}
-      />
-      <Form
-        key={`term:${term?.id ?? 'new'}:${term?.validTo}`}
-        title={
-          term
-            ? `Edit software term #${term.id}`
-            : 'Add software financial term'
-        }
-        description="Record the full licence price and paid coverage, including purchased seats. Use consecutive terms for price or capacity amendments. Perpetual coverage ends after the configured allocation life."
-        onSave={async (form) => {
-          await saveSoftwareFinancialTerm({
-            id: term?.id,
-            assetTag: text(form, 'assetTag'),
-            amount: text(form, 'amount'),
-            currency: text(form, 'currency') as 'LKR' | 'USD' | 'NOK',
-            exchangeRate: optional(form, 'exchangeRate'),
-            seats: number(form, 'seats'),
-            allocationLifeMonths: optional(form, 'life')
-              ? number(form, 'life')
-              : undefined,
-            sourcePurchaseId: term?.sourcePurchaseId ?? undefined,
-            validFrom: text(form, 'validFrom'),
-            validTo: text(form, 'validTo'),
-          });
-          setTerm(null);
-        }}
-      >
-        <Field
-          label="Software asset tag"
-          name="assetTag"
-          value={term?.assetTag}
-        />
-        <Field
-          label="Total paid amount"
-          name="amount"
-          type="number"
-          value={term?.amount ?? undefined}
-        />
-        <label className="flex flex-col gap-1 text-sm">
-          Currency
-          <select
-            name="currency"
-            className={selectClass}
-            defaultValue={term?.currency ?? 'LKR'}
-          >
-            {['LKR', 'USD', 'NOK'].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <Field
-          label="Recorded rate to LKR (1 for LKR)"
-          name="exchangeRate"
-          type="number"
-          value={term?.exchangeRate ?? '1'}
-        />
-        <Field
-          label="Purchased seats"
-          name="seats"
-          type="number"
-          value={term?.seats ?? 1}
-        />
-        <Field
-          label="Allocation life in months (perpetual only)"
-          name="life"
-          type="number"
-          value={term?.allocationLifeMonths ?? undefined}
-          required={false}
-        />
-        <Field
-          label="Coverage starts"
-          name="validFrom"
-          type="date"
-          value={term?.validFrom ?? today}
-        />
-        <Field
-          label="Coverage ends"
-          name="validTo"
-          type="date"
-          value={term?.validTo}
-        />
-        {term && (
-          <Button variant="outline" type="button" onClick={() => setTerm(null)}>
-            Cancel edit
-          </Button>
-        )}
-      </Form>
-      <History
-        rows={data.terms}
-        onEdit={setTerm}
-        render={(t) => (
-          <>
-            <strong>{t.assetTag}</strong> · {t.amount ?? 'Unpriced'}{' '}
-            {t.currency} · {t.seats} seats
-            <br />
-            {t.validFrom} to {t.validTo}
-            {t.allocationLifeMonths
-              ? ` · ${t.allocationLifeMonths} month allocation life`
-              : ''}
-          </>
-        )}
-      />
-      <Form
-        title="Correct asset cost basis"
-        description="Update acquisition inputs and the depreciation residual. Existing purchase salvage estimates remain historical information, and finalized disposal values are preserved. Foreign-currency rates must be verified against the original transaction."
-        onSave={async (form) =>
-          correctAssetCostBasis({
-            assetTag: text(form, 'assetTag'),
-            purchaseDate: text(form, 'purchaseDate'),
-            amount: text(form, 'amount'),
-            currency: text(form, 'currency') as 'LKR' | 'USD' | 'NOK',
-            exchangeRate: text(form, 'exchangeRate'),
-            residual: text(form, 'residual'),
-            lifeMonths: number(form, 'lifeMonths'),
-          })
-        }
-      >
-        <Field label="Asset tag" name="assetTag" />
-        <Field label="Purchase date" name="purchaseDate" type="date" />
-        <Field label="Total acquisition cost" name="amount" type="number" />
-        <label className="flex flex-col gap-1 text-sm">
-          Currency
-          <select name="currency" className={selectClass}>
-            {['LKR', 'USD', 'NOK'].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <Field
-          label="Recorded rate to LKR"
-          name="exchangeRate"
-          type="number"
-          value="1"
-        />
-        <Field
-          label="Residual value (purchase currency)"
-          name="residual"
-          type="number"
-          value="0"
-        />
-        <Field
-          label="Useful life in months"
-          name="lifeMonths"
-          type="number"
-          value={60}
-        />
-      </Form>
-      <Form
-        title="Verify historical exchange rate"
-        description="Correct the original transaction rate for a purchase or completed repair. Report exceptions identify repair records by their source ID."
-        onSave={async (form) =>
-          correctRecordedExchangeRate({
-            source: text(form, 'source') as 'purchase' | 'repair',
-            id: number(form, 'id'),
-            exchangeRate: text(form, 'exchangeRate'),
-          })
-        }
-      >
-        <label className="flex flex-col gap-1 text-sm">
-          Source
-          <select name="source" className={selectClass}>
-            <option value="repair">Repair</option>
-            <option value="purchase">Purchase</option>
-          </select>
-        </label>
-        <Field label="Source record ID" name="id" type="number" />
-        <Field label="Verified rate to LKR" name="exchangeRate" type="number" />
-      </Form>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selected?.row.name}</DialogTitle>
+            <DialogDescription>
+              {selected?.kind === 'people'
+                ? 'Update department and workplace.'
+                : selected?.kind === 'equipment'
+                  ? 'Choose how this equipment contributes to team costs.'
+                  : 'Keep licence pricing and seat capacity up to date.'}
+            </DialogDescription>
+          </DialogHeader>
+          {selected?.kind === 'people' && (
+            <PersonForm
+              key={selected.row.id}
+              row={selected.row}
+              data={data}
+              onSaved={() => setSelected(null)}
+            />
+          )}{' '}
+          {selected?.kind === 'equipment' && (
+            <EquipmentForm
+              key={selected.row.id}
+              row={selected.row}
+              data={data}
+              onSaved={() => setSelected(null)}
+            />
+          )}{' '}
+          {selected?.kind === 'software' && (
+            <SoftwareForm
+              key={selected.row.id}
+              row={selected.row}
+              data={data}
+              onSaved={() => setSelected(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

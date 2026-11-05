@@ -131,6 +131,7 @@ export interface PerHeadReport {
   people: PersonCostRow[];
   details: Record<string, PersonCostDetail[]>;
   currentAssets: Record<string, PersonAssetValue[]>;
+  personTrend: Record<string, { month: string; amount: number }[]>;
   summary: {
     sourceCost: number;
     allocatedCost: number;

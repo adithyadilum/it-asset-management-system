@@ -65,7 +65,7 @@ const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
   '/financials/depreciation': 'Depreciation Ledger',
   '/financials/tco': 'Total Cost of Ownership',
   '/financials/per-head': 'Per-head Cost Analysis',
-  '/financials/per-head/configuration': 'Cost Allocation Configuration',
+  '/financials/per-head/configuration': 'Cost Settings',
   '/financials/salvage': 'Salvage & Write-Offs',
   '/reports': 'Reports & Audits',
   '/reports/audit-log': 'System Audit Log',

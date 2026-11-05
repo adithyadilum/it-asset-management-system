@@ -15,6 +15,13 @@ import {
   correctRecordedExchangeRate,
 } from './financial-configuration';
 
+import {
+  getCostSettings,
+  updatePersonCostSettings,
+  updateEquipmentCostSettings,
+  updateSoftwareCostSettings,
+} from './cost-settings';
+
 const state = vi.hoisted(() => ({ role: 'GlobalAdmin', load: vi.fn() }));
 vi.mock('@/db', () => ({ db: {} }));
 vi.mock('@/actions/auth', () => ({
@@ -119,6 +126,65 @@ describe('per-head financial action boundaries', () => {
     expect(filtered.summary.otherPeopleCost).toBe(1500);
     expect(filtered.summary.sourceCost).toBe(3000);
   });
+  it('filters a workplace after allocation so shared denominators and software costs remain intact', async () => {
+    const fixture = structuredClone(data);
+    fixture.groups.push({
+      id: 2,
+      name: 'Branch',
+      departmentId: null,
+      locationId: 1,
+      coverageFrom: at('2026-11-01'),
+    });
+    fixture.memberships.push({
+      id: 3,
+      userId: b,
+      groupId: 2,
+      from: at('2026-11-01'),
+      to: null,
+      reason: 'Workplace',
+    });
+    fixture.assets.push({
+      ...fixture.assets[0],
+      id: 'software',
+      pillar: 'Software',
+      licenseId: 'lic',
+      licenseType: 'Subscription',
+    });
+    fixture.terms.push({
+      id: 1,
+      assetId: 'software',
+      licenseId: 'lic',
+      amount: '600',
+      currency: 'LKR',
+      exchangeRate: '1',
+      seats: 2,
+      allocationLifeMonths: null,
+      from: at('2026-11-01'),
+      to: at('2026-12-01'),
+    });
+    fixture.softwareAllocations = [a, b].map((userId, id) => ({
+      id,
+      licenseId: 'lic',
+      userId,
+      from: at('2026-11-01'),
+      to: null,
+      expiresAt: null,
+    }));
+    state.load.mockResolvedValue(fixture);
+    const all = await getPerHeadCostLedger(query),
+      filtered = await getPerHeadCostLedger({ ...query, groupId: 2 });
+    expect(filtered.data).toHaveLength(1);
+    expect(filtered.data[0]).toEqual(all.data.find((p) => p.id === b));
+    expect(filtered.summary.allocatedCost).toBe(1800);
+    expect(filtered.summary.breakdown).toEqual({
+      equipment: 1500,
+      software: 300,
+      maintenance: 0,
+    });
+    expect(filtered.trend).toEqual([
+      { month: '2026-11', allocated: 1800, overhead: 0, total: 1800 },
+    ]);
+  });
   it('paginates after aggregation while keeping full filtered summary totals', async () => {
     const first = await getPerHeadCostLedger({ ...query, pageSize: 1 }),
       second = await getPerHeadCostLedger({ ...query, pageSize: 1, page: 2 });
@@ -131,6 +197,7 @@ describe('per-head financial action boundaries', () => {
     expect(csv).toContain("'=Person A");
     expect(csv).toContain('b@example.com');
     expect(csv).toContain('Asia/Colombo');
+    expect(csv).not.toContain('Data status');
   });
   it('allows auditors to read reports and details but rejects every configuration mutation', async () => {
     state.role = 'FinancialAuditor';
@@ -139,6 +206,10 @@ describe('per-head financial action boundaries', () => {
     );
     for (const action of [
       () => getFinancialConfiguration(),
+      () => getCostSettings(),
+      () => updatePersonCostSettings({} as never),
+      () => updateEquipmentCostSettings({} as never),
+      () => updateSoftwareCostSettings({} as never),
       () => createFinancialGroup({} as never),
       () => saveFinancialMembership({} as never),
       () => saveAssetCostPolicy({} as never),

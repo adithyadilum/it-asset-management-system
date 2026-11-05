@@ -327,6 +327,133 @@ describe.skipIf(!state.url)(
         report.exceptions.some((e) => e.message.includes('Purchase amount'))
       ).toBe(true);
     });
+    it('updates teams and workplaces in one save while preserving subsequent history', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-05T12:00:00Z'));
+      try {
+        const [department] = await db
+          .insert(schema.departments)
+          .values({
+            name: 'Settings Team',
+            shortCode: 'SET',
+            costCenterId: 'SET-001',
+          })
+          .returning();
+        const [location] = await db
+          .insert(schema.locations)
+          .values({ name: 'Settings Workplace', type: 'Floor' })
+          .returning();
+        const { updatePersonCostSettings } =
+          await import('@/actions/cost-settings');
+        const input = {
+          userId: userB,
+          departmentId: department.id,
+          locationId: location.id,
+          from: '2026-10-15',
+        };
+        expect(await updatePersonCostSettings(input)).toEqual({
+          success: true,
+        });
+        let [person] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, userB));
+        // The backdated segment ends when the already-recorded November membership begins.
+        expect(person.departmentId).not.toBe(department.id);
+        expect(
+          await updatePersonCostSettings({ ...input, from: '2026-11-02' })
+        ).toEqual({ success: true });
+        [person] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, userB));
+        expect(person.departmentId).toBe(department.id);
+        const history = await db
+          .select()
+          .from(schema.financialMemberships)
+          .where(eq(schema.financialMemberships.userId, userB));
+        expect(
+          history.find((m) => m.groupId === groupId)?.validTo?.toISOString()
+        ).toBe(new Date('2026-11-02T00:00:00+05:30').toISOString());
+        expect(
+          history.every((m) => !m.validTo || m.validTo > m.validFrom)
+        ).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+    it('automatically closes equipment allocations and supports correcting the same effective day', async () => {
+      const { updateEquipmentCostSettings } =
+        await import('@/actions/cost-settings');
+      const [group] = await db
+        .select()
+        .from(schema.financialGroups)
+        .where(eq(schema.financialGroups.id, groupId));
+      const input = {
+        assetId,
+        allocation: `department:${group.departmentId}`,
+        shared: false,
+        from: '2026-11-02',
+      };
+      expect(await updateEquipmentCostSettings(input)).toEqual({
+        success: true,
+      });
+      expect(
+        await updateEquipmentCostSettings({ ...input, shared: true })
+      ).toEqual({ success: true });
+      const history = await db
+        .select()
+        .from(schema.assetCostPolicies)
+        .where(eq(schema.assetCostPolicies.assetId, assetId));
+      expect(history).toHaveLength(2);
+      expect(history.filter((p) => p.validTo === null)).toHaveLength(1);
+      expect(history.every((p) => !p.validTo || p.validTo > p.validFrom)).toBe(
+        true
+      );
+    });
+    it('edits software pricing in one save and rolls back conflicts with later renewals', async () => {
+      const { updateSoftwareCostSettings } =
+        await import('@/actions/cost-settings');
+      const before = await db
+        .select()
+        .from(schema.softwareFinancialTerms)
+        .where(eq(schema.softwareFinancialTerms.licenseId, licenseId));
+      const term = before.find(
+        (t) =>
+          t.validFrom.toISOString() ===
+          new Date('2026-11-01T00:00:00+05:30').toISOString()
+      )!;
+      const input = {
+        licenseId,
+        termId: term.id,
+        amount: '9000',
+        currency: 'LKR' as const,
+        seats: 4,
+        from: '2026-11-01',
+        cycle: 'monthly' as const,
+      };
+      expect(await updateSoftwareCostSettings(input)).toEqual({
+        success: true,
+      });
+      const result = await updateSoftwareCostSettings({
+        ...input,
+        from: '2026-11-15',
+        cycle: 'annual',
+      });
+      expect(result.success).toBe(false);
+      const after = await db
+        .select()
+        .from(schema.softwareFinancialTerms)
+        .where(eq(schema.softwareFinancialTerms.licenseId, licenseId));
+      expect(after).toHaveLength(2);
+      expect(after.find((t) => t.id === term.id)?.amount).toBe('9000.00');
+      expect(after.find((t) => t.id === term.id)?.validFrom.toISOString()).toBe(
+        term.validFrom.toISOString()
+      );
+      expect(after.find((t) => t.id !== term.id)).toEqual(
+        before.find((t) => t.id !== term.id)
+      );
+    });
     it('preserves the historical purchase estimate when correcting the depreciation residual', async () => {
       await db
         .update(schema.assetPurchases)

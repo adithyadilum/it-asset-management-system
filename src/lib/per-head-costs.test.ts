@@ -125,6 +125,27 @@ describe('per-head cost allocation', () => {
     expect(row(report, 'b').currentBookValue).toBe(33000);
     balances(report);
   });
+  it('keeps each monthly chart total equal to the sum of person amounts', () => {
+    const report = calculatePerHeadCosts(fixture(), {
+      ...period,
+      to: '2026-12-31',
+      asOf: '2027-01-01T00:00:00Z',
+    });
+    for (const point of report.trend) {
+      const allocated = Object.values(report.personTrend).reduce(
+        (sum, months) =>
+          sum + (months.find((m) => m.month === point.month)?.amount ?? 0),
+        0
+      );
+      expect(allocated).toBeCloseTo(point.allocated, 2);
+    }
+    expect(
+      report.personTrend.a.find((m) => m.month === '2026-11')?.amount
+    ).toBe(1000);
+    expect(
+      report.personTrend.b.find((m) => m.month === '2026-12')?.amount
+    ).toBe(3000);
+  });
   it('starts at acceptance; pending, rejected, and cancelled intervals never incur personal cost', () => {
     const data = fixture();
     data.assignments = [

@@ -371,7 +371,6 @@ export function DepreciationLedger({
     // instead squeeze the table into whatever was left over.
     <div className="flex flex-col gap-6">
       <LedgerSummary
-        incompleteCosts={summary.incompleteCosts}
         asOf={summary.asOf}
         stats={[
           {

@@ -23,24 +23,15 @@ export function LedgerSummary({
   stats,
   asOf,
   className,
-  incompleteCosts = 0,
 }: {
   stats: LedgerSummaryStat[];
   /** ISO timestamp the figures were computed at. */
   asOf?: string;
   className?: string;
-  incompleteCosts?: number;
 }) {
   return (
-    <div className={cn('space-y-2', className)}>
-      {incompleteCosts > 0 && (
-        <p role="status" className="text-sm text-amber-700">
-          {incompleteCosts} financial{' '}
-          {incompleteCosts === 1 ? 'record needs' : 'records need'} review.
-          Totals include calculable costs only.
-        </p>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={cn('@container space-y-2', className)}>
+      <div className="grid gap-3 @min-[450px]:grid-cols-2 @min-[1100px]:grid-cols-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
@@ -51,7 +42,7 @@ export function LedgerSummary({
             </p>
             <p
               className={cn(
-                'mt-1 text-2xl font-semibold',
+                'mt-1 break-words text-2xl font-semibold',
                 stat.tone === 'positive' && 'text-emerald-600',
                 stat.tone === 'warning' && 'text-amber-600'
               )}
