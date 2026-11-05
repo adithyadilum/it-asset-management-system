@@ -167,11 +167,11 @@ The external financial API currently returns asset-level purchase/depreciation i
 
 Audit baseline executed successfully with `npm.cmd run test:run -- src/actions/financials.test.ts src/lib/depreciation.test.ts src/actions/assignments.test.ts src/actions/software.test.ts src/lib/auth/roles.test.ts src/components/features/financials/tco-ledger.test.tsx`: **6 test files, 81 tests passed**. These are existing unit/component tests with mocked data; they do not establish production data quality or validate the planned allocation engine.
 
-## Defaults and the remaining data decision
+## Confirmed calculation and residual policy
 
 The original planning questions have been answered. Acceptance-based custody, Asia/Colombo, and ownership-time proration were confirmed before implementation. Repair completion is the recognition date. Current values show both acquisition and book/carrying shares, separately from period expense. Average usage cost includes only people eligible during the selected period, even when another person currently holds the same asset.
 
-A later read-only data audit found **162 assets** where the existing depreciation residual differs from the purchase salvage estimate. These values have not been overwritten. The existing asset residual remains the calculation input, and discrepancies are surfaced for review. A question was presented about whether the purchase estimate should remain historical information, become the authoritative residual, or be reviewed individually. No automatic reconciliation of these conflicts has been applied.
+A later read-only data audit found **162 assets** where the existing depreciation residual differs from the purchase salvage estimate. The user confirmed that **the existing depreciation residual is authoritative and the purchase estimate must remain historical information**. Both values are preserved. These historical differences do not make a cost report incomplete or require reconciliation. Subsequent cost-basis corrections update the asset residual without replacing an existing purchase estimate; a new purchase can still capture its initial estimate. No application-database records have been changed to enforce this policy.
 
 ## Implemented behavior
 
@@ -199,14 +199,15 @@ Before running this version against the application database:
 4. Record legacy software paid terms and perpetual allocation lives. Verify historical non-LKR repair rates. Unknown inputs remain visible as incomplete until corrected.
 5. Review representative reports with Finance before relying on their totals. Earlier shared-cost periods intentionally remain uncovered by newly created membership history.
 
-Neither migration has been applied to the connected application database during this implementation. Additive migrations were applied and reapplied only to disposable local PostgreSQL clusters. No original conflict values or application records were changed by the read-only audit.
+Neither migration has been applied to the connected application database during this implementation. Additive migrations were applied and reapplied only to disposable local PostgreSQL clusters. No original residuals, historical estimates, or application records were changed by the read-only audit.
 
 ## Verification completed
 
-- Full Vitest run: **229 files passed; 1,479 tests passed**. The seven database tests are skipped in the ordinary run unless an isolated test connection is supplied; they were executed successfully separately.
-- Disposable PostgreSQL: **all six migrations applied twice successfully**, followed by **seven passing integration tests** covering mixed-currency TCO, source loading/allocation, dashboard consistency, overlap rejection, renewal history, missing prices, and department transitions.
+- Initial full Vitest run: **229 files passed; 1,479 tests passed**. Database tests are skipped in the ordinary run unless an isolated test connection is supplied; they were executed successfully separately.
+- Disposable PostgreSQL: **all six migrations applied twice successfully**, followed by **eight passing integration tests** covering mixed-currency TCO, source loading/allocation, dashboard consistency, overlap rejection, renewal history, missing prices, department transitions, and preservation of historical purchase estimates when correcting the depreciation residual.
 - Production browser workflow: filtering, CSV download, person drill-down, actual admin cost correction, auditor read access, hidden configuration controls, and a 403 redirect for unauthorized configuration access all passed against isolated local data.
 - `npm run check` passed, including repository lint and TypeScript. `npm run build` passed, including both new routes.
 - Disposal regression tests: eight relevant action/component tests passed.
+- Confirmed residual-policy follow-up: **23 targeted unit/action tests and eight PostgreSQL integration tests passed**, alongside lint and TypeScript checks. A different historical purchase estimate neither changes the depreciation calculation nor marks the report incomplete.
 
 Reproduce the database checks with `npm run test:financial-db` using local PostgreSQL binaries on PATH (or set `POSTGRES_BIN`). After building, run `npm run test:financial-ui` for the browser workflow; it uses installed Edge on Windows by default, or `FINANCIAL_BROWSER_CHANNEL` to select an installed Playwright channel. Both commands create and remove their own temporary database and never use `DATABASE_URL`. Browser artifacts are written beneath the ignored `test-results/per-head/` directory.

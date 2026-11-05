@@ -327,5 +327,32 @@ describe.skipIf(!state.url)(
         report.exceptions.some((e) => e.message.includes('Purchase amount'))
       ).toBe(true);
     });
+    it('preserves the historical purchase estimate when correcting the depreciation residual', async () => {
+      await db
+        .update(schema.assetPurchases)
+        .set({ estimatedSalvageValue: '125' })
+        .where(eq(schema.assetPurchases.assetId, assetId));
+      const { correctAssetCostBasis } =
+        await import('@/actions/financial-configuration');
+      await correctAssetCostBasis({
+        assetTag: 'TST-001',
+        purchaseDate: '2026-11-01',
+        amount: '1000',
+        currency: 'USD',
+        exchangeRate: '300',
+        residual: '200',
+        lifeMonths: 12,
+      });
+      const [purchase] = await db
+        .select()
+        .from(schema.assetPurchases)
+        .where(eq(schema.assetPurchases.assetId, assetId));
+      const [asset] = await db
+        .select()
+        .from(schema.assets)
+        .where(eq(schema.assets.id, assetId));
+      expect(purchase.estimatedSalvageValue).toBe('125.00');
+      expect(asset.salvageValue).toBe('200.00');
+    });
   }
 );

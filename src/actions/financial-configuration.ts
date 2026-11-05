@@ -519,14 +519,16 @@ export async function correctAssetCostBasis(input: {
       totalCost: value.amount,
       currencyCode: value.currency,
       exchangeRate: value.currency === 'LKR' ? '1' : value.exchangeRate,
-      estimatedSalvageValue: value.residual,
     };
     if (purchases[0])
       await tx
         .update(assetPurchases)
         .set(record)
         .where(eq(assetPurchases.id, purchases[0].id));
-    else await tx.insert(assetPurchases).values(record);
+    else
+      await tx
+        .insert(assetPurchases)
+        .values({ ...record, estimatedSalvageValue: value.residual });
     await tx
       .update(assets)
       .set({ salvageValue: value.residual, usefulLifeMonths: value.lifeMonths })

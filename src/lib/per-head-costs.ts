@@ -371,16 +371,6 @@ export function calculatePerHeadCosts(
 
   for (const asset of data.assets) {
     const source = `asset:${asset.id}`;
-    if (
-      asset.residual != null &&
-      asset.purchaseResidual != null &&
-      Number(asset.residual) !== Number(asset.purchaseResidual)
-    )
-      warn(
-        source,
-        asset.id,
-        'Residual value differs from the acquisition estimate; review the cost basis.'
-      );
     const cost = reportingCents(asset.cost, asset.currency, asset.exchangeRate);
     const purchased = asset.purchaseDate ? reportDate(asset.purchaseDate) : NaN;
     const disposed = instant(asset.disposedAt);

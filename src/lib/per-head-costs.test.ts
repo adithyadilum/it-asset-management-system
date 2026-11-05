@@ -102,6 +102,20 @@ const balances = (report: ReturnType<typeof calculatePerHeadCosts>) =>
   );
 
 describe('per-head cost allocation', () => {
+  it('uses the depreciation residual while retaining a different historical purchase estimate', () => {
+    const data = fixture();
+    data.assets[0].residual = '3600';
+    data.assets[0].purchaseResidual = '7200';
+    const report = calculatePerHeadCosts(data, period);
+    expect(report.summary.sourceCost).toBe(2700);
+    expect(row(report, 'a').directDepreciation).toBe(900);
+    expect(row(report, 'b').directDepreciation).toBe(1800);
+    expect(row(report, 'b').currentBookValue).toBe(33300);
+    expect(report.exceptions).toEqual([]);
+    expect(row(report, 'b').incomplete).toBe(false);
+    expect(data.assets[0].purchaseResidual).toBe('7200');
+    balances(report);
+  });
   it('splits transfers by accepted custody, preserving transferred acceptance and current values separately', () => {
     const report = calculatePerHeadCosts(fixture(), period);
     expect(row(report, 'a').directDepreciation).toBe(1000);

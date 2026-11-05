@@ -18,7 +18,7 @@ try {
         (SELECT COUNT(*) FROM assets a WHERE NOT EXISTS (SELECT 1 FROM asset_purchases p WHERE p.asset_id=a.id))::int AS "assetsWithoutPurchase",
         (SELECT COUNT(*) FROM asset_purchases WHERE total_cost IS NULL OR total_cost<0 OR purchase_date IS NULL)::int AS "incompletePurchases",
         (SELECT COUNT(*) FROM asset_purchases WHERE currency_code IS NULL OR (currency_code<>'LKR' AND (exchange_rate IS NULL OR exchange_rate<=0 OR exchange_rate=1)))::int AS "unverifiedPurchaseFx",
-        (SELECT COUNT(*) FROM assets a JOIN asset_purchases p ON p.asset_id=a.id WHERE a.salvage_value IS NOT NULL AND p.estimated_salvage_value IS NOT NULL AND a.salvage_value<>p.estimated_salvage_value)::int AS "conflictingResidualEstimates",
+        (SELECT COUNT(*) FROM assets a JOIN asset_purchases p ON p.asset_id=a.id WHERE a.salvage_value IS NOT NULL AND p.estimated_salvage_value IS NOT NULL AND a.salvage_value<>p.estimated_salvage_value)::int AS "historicalResidualDifferences",
         (SELECT COUNT(*) FROM (SELECT asset_id FROM asset_assignments WHERE returned_date IS NULL GROUP BY asset_id HAVING COUNT(*)>1) d)::int AS "assetsWithMultipleOpenAssignments",
         (SELECT COUNT(*) FROM asset_assignments WHERE acceptance_status='accepted' AND accepted_at IS NULL)::int AS "acceptedAssignmentsWithoutAcceptanceTime",
         (SELECT COUNT(*) FROM maintenance_tickets WHERE status='COMPLETED' AND (actual_cost IS NULL OR actual_completion_date IS NULL))::int AS "incompleteCompletedRepairs"`;

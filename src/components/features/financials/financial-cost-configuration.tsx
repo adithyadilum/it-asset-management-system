@@ -483,7 +483,7 @@ export function FinancialCostConfiguration({ data }: { data: Configuration }) {
       />
       <Form
         title="Correct asset cost basis"
-        description="Fill missing acquisition inputs or reconcile a salvage estimate. Existing finalized disposal values are preserved. Foreign-currency rates must be verified against the original transaction."
+        description="Update acquisition inputs and the depreciation residual. Existing purchase salvage estimates remain historical information, and finalized disposal values are preserved. Foreign-currency rates must be verified against the original transaction."
         onSave={async (form) =>
           correctAssetCostBasis({
             assetTag: text(form, 'assetTag'),
