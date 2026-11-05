@@ -100,6 +100,15 @@ export interface PersonCostDetail {
   source: string;
   month: string;
 }
+export interface PersonAssetValue {
+  assetId: string;
+  assetTag: string;
+  kind: 'Direct' | 'Shared' | 'Software seat';
+  acquisitionShare: number | null;
+  bookShare: number | null;
+  wholeAcquisitionValue: number | null;
+  wholeBookValue: number | null;
+}
 export interface PersonCostRow extends CostPerson {
   eligibleInPeriod: boolean;
   directDepreciation: number;
@@ -121,6 +130,7 @@ export interface CostException {
 export interface PerHeadReport {
   people: PersonCostRow[];
   details: Record<string, PersonCostDetail[]>;
+  currentAssets: Record<string, PersonAssetValue[]>;
   summary: {
     sourceCost: number;
     allocatedCost: number;

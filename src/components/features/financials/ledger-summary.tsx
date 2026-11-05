@@ -35,8 +35,9 @@ export function LedgerSummary({
     <div className={cn('space-y-2', className)}>
       {incompleteCosts > 0 && (
         <p role="status" className="text-sm text-amber-700">
-          Totals include known costs only. {incompleteCosts} cost records need
-          an amount or a verified exchange rate.
+          {incompleteCosts} financial{' '}
+          {incompleteCosts === 1 ? 'record needs' : 'records need'} review.
+          Totals include calculable costs only.
         </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

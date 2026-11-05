@@ -6,6 +6,7 @@ import type {
   PerHeadReport,
   PersonCostDetail,
   PersonCostRow,
+  PersonAssetValue,
 } from '@/types/per-head-costs';
 import {
   addMonths,
@@ -25,7 +26,24 @@ const active = (value: CostInterval, at: number) =>
 const roundedRatio = (value: bigint, numerator: number, denominator: number) =>
   (value * BigInt(numerator) + BigInt(Math.floor(denominator / 2))) /
   BigInt(denominator);
-const money = (value: bigint) => Number(value) / 100;
+const money = (value: bigint) => {
+  if (
+    value > BigInt(Number.MAX_SAFE_INTEGER) ||
+    value < BigInt(-Number.MAX_SAFE_INTEGER)
+  )
+    throw new Error('Cost total exceeds the supported reporting precision.');
+  return Number(value) / 100;
+};
+function indexBy<T, K>(values: T[], key: (value: T) => K): Map<K, T[]> {
+  const map = new Map<K, T[]>();
+  for (const value of values) {
+    const k = key(value);
+    const bucket = map.get(k);
+    if (bucket) bucket.push(value);
+    else map.set(k, [value]);
+  }
+  return map;
+}
 const decimal = (value: string) => {
   if (!/^\d+(\.\d{1,6})?$/.test(value)) return null;
   const [whole, fraction = ''] = value.split('.');
@@ -54,7 +72,13 @@ export function reportingCents(
 /** All cost sources are split before person filters; one cent is never allocated twice. */
 export function calculatePerHeadCosts(
   data: PerHeadDataset,
-  options: { from: string; to: string; asOf: string; groupId?: number }
+  options: {
+    from: string;
+    to: string;
+    asOf: string;
+    groupId?: number;
+    detailPersonId?: string | null;
+  }
 ): PerHeadReport {
   const start = reportDate(options.from),
     requestedEnd = reportDate(options.to) + DAY_MS;
@@ -73,8 +97,17 @@ export function calculatePerHeadCosts(
   const people = new Map(data.people.map((p) => [p.id, p]));
   const assets = new Map(data.assets.map((a) => [a.id, a]));
   const groups = new Map(data.groups.map((g) => [g.id, g]));
+  const policiesByAsset = indexBy(data.policies, (p) => p.assetId);
+  const assignmentsByAsset = indexBy(data.assignments, (a) => a.assetId);
+  const membershipsByGroup = indexBy(data.memberships, (m) => m.groupId);
+  const allocationsByLicense = indexBy(
+    data.softwareAllocations,
+    (a) => a.licenseId
+  );
+  const termsByLicense = indexBy(data.terms, (t) => t.licenseId);
   const participating = new Set<string>();
   const details: Record<string, PersonCostDetail[]> = {};
+  const currentAssets: Record<string, PersonAssetValue[]> = {};
   const costs = new Map<string, Record<CostComponent, bigint>>();
   const values = new Map<
     string,
@@ -110,8 +143,8 @@ export function calculatePerHeadCosts(
     return true;
   };
   const policyAt = (assetId: string, at: number) => {
-    const matches = data.policies.filter(
-      (p) => p.assetId === assetId && active(p, at)
+    const matches = (policiesByAsset.get(assetId) ?? []).filter((p) =>
+      active(p, at)
     );
     if (matches.length > 1) {
       warn(
@@ -128,8 +161,8 @@ export function calculatePerHeadCosts(
     if (!group || at < instant(group.coverageFrom)) return [];
     return [
       ...new Set(
-        data.memberships
-          .filter((m) => m.groupId === groupId && active(m, at))
+        (membershipsByGroup.get(groupId) ?? [])
+          .filter((m) => active(m, at))
           .map((m) => m.userId)
       ),
     ]
@@ -137,9 +170,8 @@ export function calculatePerHeadCosts(
       .sort();
   };
   const custodyAt = (assetId: string, at: number) =>
-    data.assignments.filter(
+    (assignmentsByAsset.get(assetId) ?? []).filter(
       (a) =>
-        a.assetId === assetId &&
         a.userId &&
         a.acceptedAt &&
         instant(a.acceptedAt) <= at &&
@@ -147,9 +179,8 @@ export function calculatePerHeadCosts(
         !['cancelled', 'rejected'].includes(a.acceptanceStatus ?? '')
     );
   const seatsAt = (licenseId: string, at: number) =>
-    data.softwareAllocations.filter(
-      (a) =>
-        a.licenseId === licenseId && active(a, at) && at < instant(a.expiresAt)
+    (allocationsByLicense.get(licenseId) ?? []).filter(
+      (a) => active(a, at) && at < instant(a.expiresAt)
     );
   const share = (
     amount: bigint,
@@ -185,15 +216,19 @@ export function calculatePerHeadCosts(
       if (!enroll(id)) continue;
       costs.get(id)![component] += value;
       assigned += value;
-      (details[id] ??= []).push({
-        assetId: asset.id,
-        assetTag: asset.tag,
-        component,
-        amount: money(value),
-        groupId,
-        source,
-        month,
-      });
+      if (
+        options.detailPersonId !== null &&
+        (!options.detailPersonId || options.detailPersonId === id)
+      )
+        (details[id] ??= []).push({
+          assetId: asset.id,
+          assetTag: asset.tag,
+          component,
+          amount: money(value),
+          groupId,
+          source,
+          month,
+        });
     }
     const remainder = amount - assigned;
     allocatedTotal += assigned;
@@ -213,13 +248,13 @@ export function calculatePerHeadCosts(
     const add = (at: number) => {
       if (Number.isFinite(at) && at > from && at < to) points.add(at);
     };
-    const policies = data.policies.filter((p) => p.assetId === assetId);
+    const policies = policiesByAsset.get(assetId) ?? [];
     const groupIds = new Set(policies.map((p) => p.groupId));
     for (const p of policies) {
       add(instant(p.from));
       add(instant(p.to));
     }
-    for (const a of data.assignments.filter((a) => a.assetId === assetId)) {
+    for (const a of assignmentsByAsset.get(assetId) ?? []) {
       add(instant(a.acceptedAt));
       add(instant(a.to));
     }
@@ -230,9 +265,7 @@ export function calculatePerHeadCosts(
     for (const g of data.groups.filter((g) => groupIds.has(g.id)))
       add(instant(g.coverageFrom));
     if (licenseId)
-      for (const a of data.softwareAllocations.filter(
-        (a) => a.licenseId === licenseId
-      )) {
+      for (const a of allocationsByLicense.get(licenseId) ?? []) {
         add(instant(a.from));
         add(instant(a.to));
         add(instant(a.expiresAt));
@@ -338,6 +371,16 @@ export function calculatePerHeadCosts(
 
   for (const asset of data.assets) {
     const source = `asset:${asset.id}`;
+    if (
+      asset.residual != null &&
+      asset.purchaseResidual != null &&
+      Number(asset.residual) !== Number(asset.purchaseResidual)
+    )
+      warn(
+        source,
+        asset.id,
+        'Residual value differs from the acquisition estimate; review the cost basis.'
+      );
     const cost = reportingCents(asset.cost, asset.currency, asset.exchangeRate);
     const purchased = asset.purchaseDate ? reportDate(asset.purchaseDate) : NaN;
     const disposed = instant(asset.disposedAt);
@@ -357,6 +400,16 @@ export function calculatePerHeadCosts(
     }
     if (asset.pillar === 'Software') {
       if (
+        !(
+          asset.licenseType === 'Perpetual' &&
+          data.terms.some(
+            (t) =>
+              t.assetId === asset.id &&
+              t.allocationLifeMonths &&
+              instant(t.to) <= start &&
+              reportingCents(t.amount, t.currency, t.exchangeRate) != null
+          )
+        ) &&
         !data.terms.some(
           (t) =>
             t.assetId === asset.id &&
@@ -436,10 +489,9 @@ export function calculatePerHeadCosts(
       continue;
     }
     if (
-      data.terms.some(
+      (termsByLicense.get(term.licenseId) ?? []).some(
         (other) =>
           other.id !== term.id &&
-          other.licenseId === term.licenseId &&
           instant(other.from) < to &&
           instant(other.to) > from
       )
@@ -524,7 +576,14 @@ export function calculatePerHeadCosts(
     if (
       instant(m.from) < end &&
       instant(m.to) > start &&
-      (!options.groupId || m.groupId === options.groupId)
+      (!options.groupId || m.groupId === options.groupId) &&
+      data.policies.some(
+        (p) =>
+          p.groupId === m.groupId &&
+          assets.has(p.assetId) &&
+          instant(p.from) < end &&
+          instant(p.to) > start
+      )
     )
       enroll(m.userId);
   for (const a of data.softwareAllocations)
@@ -548,71 +607,135 @@ export function calculatePerHeadCosts(
 
   const periodPeople = new Set(participating);
   for (const asset of data.assets) {
-    const cost = reportingCents(asset.cost, asset.currency, asset.exchangeRate);
     const purchased = asset.purchaseDate ? reportDate(asset.purchaseDate) : NaN;
     if (
-      cost == null ||
-      asset.purchaseCount !== 1 ||
-      !Number.isFinite(purchased) ||
-      purchased > now ||
+      (Number.isFinite(purchased) && purchased > now) ||
       instant(asset.disposedAt) <= now
     )
       continue;
     const policy = policyAt(asset.id, now);
     if (options.groupId && policy?.groupId !== options.groupId) continue;
-    let recipients: string[] = [],
+    const cost =
+      asset.purchaseCount === 1
+        ? reportingCents(asset.cost, asset.currency, asset.exchangeRate)
+        : null;
+    let book = cost,
+      recipients: string[] = [],
       denominator = 0,
-      book = cost;
+      kind: PersonAssetValue['kind'] = 'Direct';
     if (asset.pillar === 'Software') {
       if (!asset.licenseId || now >= instant(asset.licenseExpiry)) continue;
       const seats = seatsAt(asset.licenseId, now);
       recipients = [...new Set(seats.map((s) => s.userId))].sort();
-      const currentTerm = data.terms.find(
-        (t) => t.licenseId === asset.licenseId && active(t, now)
+      const currentTerm = (termsByLicense.get(asset.licenseId) ?? []).find(
+        (t) => active(t, now)
       );
       denominator = currentTerm?.seats ?? asset.totalSeats ?? 0;
-      if (seats.length !== recipients.length || recipients.length > denominator)
-        continue;
-    } else {
-      const life = asset.lifeMonths ?? 60;
-      const residual = reportingCents(
-        asset.residual ?? '0',
-        asset.currency,
-        asset.exchangeRate
-      );
-      if (life <= 0 || residual == null || residual > cost) continue;
-      book =
-        cost -
-        roundedRatio(
-          cost - residual,
-          Math.min(life, Math.max(0, monthDifference(purchased, now))),
-          life
+      kind = 'Software seat';
+      if (
+        seats.length !== recipients.length ||
+        recipients.length > denominator
+      ) {
+        warn(
+          `asset:${asset.id}`,
+          asset.id,
+          'Current software allocations exceed verified seat capacity.'
         );
+        book = null;
+        denominator = 0;
+      }
+    } else {
+      const life = asset.lifeMonths ?? 60,
+        residual = reportingCents(
+          asset.residual ?? '0',
+          asset.currency,
+          asset.exchangeRate
+        );
+      if (
+        cost == null ||
+        life <= 0 ||
+        residual == null ||
+        residual > cost ||
+        !Number.isFinite(purchased)
+      )
+        book = null;
+      else
+        book =
+          cost -
+          roundedRatio(
+            cost - residual,
+            Math.min(life, Math.max(0, monthDifference(purchased, now))),
+            life
+          );
       const custody = custodyAt(asset.id, now);
-      if (custody.length > 1) continue;
+      if (custody.length > 1) {
+        warn(
+          `asset:${asset.id}`,
+          asset.id,
+          'Overlapping current custody; current value shares are unavailable.'
+        );
+        continue;
+      }
       recipients = custody.length
         ? [custody[0].userId!]
         : policy?.shared
           ? membersAt(policy.groupId, now)
           : [];
+      kind = custody.length ? 'Direct' : 'Shared';
       denominator = recipients.length;
     }
-    const bookShares = new Map(share(book, recipients, denominator));
-    for (const [id, value] of share(cost, recipients, denominator)) {
+    const acquisitionShares = new Map(
+      share(cost ?? BigInt(0), recipients, denominator)
+    );
+    const bookShares = new Map(
+      share(book ?? BigInt(0), recipients, denominator)
+    );
+    for (const id of recipients) {
       if (!enroll(id)) continue;
       const current = values.get(id)!;
-      current.acquisition += value;
-      current.book += bookShares.get(id) ?? BigInt(0);
       current.assets.add(asset.id);
       if (asset.pillar === 'Software') current.seats.add(asset.licenseId!);
+      const acquisitionShare =
+        cost != null && denominator > 0
+          ? (acquisitionShares.get(id) ?? null)
+          : null;
+      const bookShare =
+        book != null && denominator > 0 ? (bookShares.get(id) ?? null) : null;
+      current.acquisition += acquisitionShare ?? BigInt(0);
+      current.book += bookShare ?? BigInt(0);
+      if (
+        options.detailPersonId !== null &&
+        (!options.detailPersonId || options.detailPersonId === id)
+      )
+        (currentAssets[id] ??= []).push({
+          assetId: asset.id,
+          assetTag: asset.tag,
+          kind,
+          acquisitionShare:
+            acquisitionShare == null ? null : money(acquisitionShare),
+          bookShare: bookShare == null ? null : money(bookShare),
+          wholeAcquisitionValue: cost == null ? null : money(cost),
+          wholeBookValue: book == null ? null : money(book),
+        });
     }
   }
+
   const affected = new Set([...exceptions.values()].map((e) => e.assetId));
+  const affectedGroups = new Set(
+    data.policies.filter((p) => affected.has(p.assetId)).map((p) => p.groupId)
+  );
   const rows: PersonCostRow[] = [...participating]
     .map((id) => {
       const value = values.get(id)!,
         cost = costs.get(id)!;
       const incomplete =
+        data.memberships.some(
+          (m) =>
+            m.userId === id &&
+            affectedGroups.has(m.groupId) &&
+            instant(m.from) < end &&
+            instant(m.to) > start
+        ) ||
         data.assignments.some(
           (a) => a.userId === id && affected.has(a.assetId)
         ) ||
@@ -658,6 +781,7 @@ export function calculatePerHeadCosts(
   return {
     people: rows,
     details,
+    currentAssets,
     summary: {
       sourceCost: money(sourceTotal),
       allocatedCost: money(allocatedTotal),

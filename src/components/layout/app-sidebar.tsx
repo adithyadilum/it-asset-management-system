@@ -114,6 +114,7 @@ const managementItems: NavItem[] = [
     children: [
       { label: 'Depreciation Ledger', href: '/financials/depreciation' },
       { label: 'Total Cost of Ownership', href: '/financials/tco' },
+      { label: 'Per-head Cost Analysis', href: '/financials/per-head' },
       { label: 'Salvage & Write-Offs', href: '/financials/salvage' },
     ],
   },

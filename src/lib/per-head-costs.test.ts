@@ -290,4 +290,78 @@ describe('per-head cost allocation', () => {
     expect(reportingCents('0', 'LKR', null)).toBe(BigInt(0));
     expect(reportingCents(null, 'LKR', '1')).toBeNull();
   });
+  it('retains currently held unpriced assets in person detail', () => {
+    const data = fixture();
+    data.assets[0].cost = null;
+    const report = calculatePerHeadCosts(data, period);
+    expect(row(report, 'b').assetCount).toBe(1);
+    expect(report.currentAssets.b[0].acquisitionShare).toBeNull();
+    expect(row(report, 'b').incomplete).toBe(true);
+  });
+  it('does not add current-only custodians to a historical average denominator', () => {
+    const data = fixture();
+    data.people.push({
+      id: 'c',
+      name: 'C',
+      email: 'c@example.com',
+      department: 'IT',
+    });
+    data.assignments[1].to = at('2026-12-01');
+    data.assignments.push({
+      id: 3,
+      assetId: 'pc',
+      userId: 'c',
+      from: at('2026-12-01'),
+      acceptedAt: at('2026-12-01'),
+      to: null,
+      acceptanceStatus: 'accepted',
+    });
+    const report = calculatePerHeadCosts(data, {
+      ...period,
+      asOf: '2026-12-15T00:00:00Z',
+    });
+    expect(report.summary.peopleCount).toBe(2);
+    expect(report.summary.averageCost).toBe(1500);
+    expect(row(report, 'c').eligibleInPeriod).toBe(false);
+    expect(row(report, 'c').currentAcquisitionValue).toBe(36000);
+  });
+  it('keeps perpetual software at its carrying value after its usage allocation life finishes', () => {
+    const data = fixture();
+    Object.assign(data.assets[0], {
+      pillar: 'Software',
+      licenseId: 'lic',
+      licenseType: 'Perpetual',
+      totalSeats: 1,
+      purchaseDate: '2025-11-01',
+    });
+    data.assignments = [];
+    data.terms = [
+      {
+        id: 1,
+        assetId: 'pc',
+        licenseId: 'lic',
+        amount: '36000',
+        currency: 'LKR',
+        exchangeRate: '1',
+        seats: 1,
+        allocationLifeMonths: 12,
+        from: at('2025-11-01'),
+        to: at('2026-11-01'),
+      },
+    ];
+    data.softwareAllocations = [
+      {
+        id: 1,
+        licenseId: 'lic',
+        userId: 'a',
+        from: at('2025-11-01'),
+        to: null,
+        expiresAt: null,
+      },
+    ];
+    const report = calculatePerHeadCosts(data, period);
+    expect(report.summary.allocatedCost).toBe(0);
+    expect(row(report, 'a').currentBookValue).toBe(36000);
+    expect(report.exceptions).toHaveLength(0);
+  });
 });
