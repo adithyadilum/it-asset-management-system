@@ -18,10 +18,10 @@ import {
   softwareLicenses,
   softwareAllocations,
   assetAssignments,
+  softwareFinancialTerms,
 } from '@/db/schema';
 import { unstable_cache } from 'next/cache';
 import {
-  DEFAULT_SOFTWARE_SEAT_COST,
   DASHBOARD_KPI_CACHE_TTL,
   HIGH_MAINTENANCE_TICKET_THRESHOLD,
   FLEET_HEALTH_WEIGHTS,
@@ -30,7 +30,8 @@ import {
   NON_DEPLOYABLE_STATUSES,
 } from '@/lib/constants/dashboard';
 import type { DashboardKpiMetrics, FleetHealthFactor } from '@/types/dashboard';
-import { convertCurrencyAmount } from '@/lib/currency';
+import { recordedMoney, recordedMoneySql } from '@/lib/recorded-money';
+import { softwareMonthlySeatCost } from '@/lib/software-monthly-cost';
 import { straightLineNbvSqlFragment } from '@/lib/depreciation';
 
 function getFleetHealthLabel(score: number): string {
@@ -266,10 +267,6 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       .from(softwareLicenses)
       .where(eq(softwareLicenses.isActive, true));
 
-    const softwareAssetIds = allLicenses
-      .map((l) => l.assetId)
-      .filter(Boolean) as string[];
-
     const [
       assetMetricsRes,
       financialMetricsRes,
@@ -279,7 +276,6 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       allocationsCountRes,
       overdueCountRes,
       highRepairCountRes,
-      softwarePurchasesRes,
     ] = await Promise.all([
       db
         .select({
@@ -298,19 +294,19 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
 
       db
         .select({
-          totalAssetValue: sql<number>`SUM(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1))`,
-          totalAssetValuePrev: sql<number>`SUM(CASE WHEN ${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp THEN ${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1) ELSE 0 END)`,
+          totalAssetValue: sql<number>`SUM(${recordedMoneySql(assetPurchases.totalCost, assetPurchases.currencyCode, assetPurchases.exchangeRate)})`,
+          totalAssetValuePrev: sql<number>`SUM(CASE WHEN ${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp THEN ${recordedMoneySql(assetPurchases.totalCost, assetPurchases.currencyCode, assetPurchases.exchangeRate)} ELSE 0 END)`,
           nbv: sql<number>`
             SUM(
               CASE WHEN ${assets.status} != 'Disposed' THEN
                 CASE WHEN ${assetPurchases.purchaseDate} IS NULL THEN
-                  COALESCE(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1), 0)
+                  COALESCE(${recordedMoneySql(assetPurchases.totalCost, assetPurchases.currencyCode, assetPurchases.exchangeRate)}, 0)
                 ELSE
                   ${sql.raw(
                     straightLineNbvSqlFragment(
-                      'asset_purchases.total_cost',
-                      'asset_purchases.exchange_rate',
-                      'assets.salvage_value',
+                      "CASE WHEN asset_purchases.currency_code = 'LKR' THEN asset_purchases.total_cost WHEN asset_purchases.exchange_rate > 0 AND asset_purchases.exchange_rate <> 1 THEN asset_purchases.total_cost * asset_purchases.exchange_rate ELSE NULL END",
+                      '1',
+                      "CASE WHEN asset_purchases.currency_code = 'LKR' THEN assets.salvage_value WHEN asset_purchases.exchange_rate > 0 AND asset_purchases.exchange_rate <> 1 THEN assets.salvage_value * asset_purchases.exchange_rate ELSE NULL END",
                       'assets.useful_life_months',
                       'asset_purchases.purchase_date',
                       undefined,
@@ -351,13 +347,17 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       db
         .select({
           currencyCode: maintenanceTickets.currencyCode,
+          exchangeRate: maintenanceTickets.exchangeRate,
           allTimeRepair: sql<number>`SUM(${maintenanceTickets.actualCost})`,
           repairThisMonth: sql<number>`SUM(CASE WHEN ${maintenanceTickets.actualCompletionDate} >= DATE_TRUNC('month', CURRENT_DATE) THEN ${maintenanceTickets.actualCost} ELSE 0 END)`,
           repairLastMonth: sql<number>`SUM(CASE WHEN ${maintenanceTickets.actualCompletionDate} >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month' AND ${maintenanceTickets.actualCompletionDate} < DATE_TRUNC('month', CURRENT_DATE) THEN ${maintenanceTickets.actualCost} ELSE 0 END)`,
         })
         .from(maintenanceTickets)
         .where(eq(maintenanceTickets.status, 'COMPLETED'))
-        .groupBy(maintenanceTickets.currencyCode),
+        .groupBy(
+          maintenanceTickets.currencyCode,
+          maintenanceTickets.exchangeRate
+        ),
 
       db
         .select({
@@ -435,17 +435,6 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
           .having(sql`COUNT(*) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`)
           .as('high_repair_assets')
       ),
-
-      // 10th parallel query: software purchase costs (previously a sequential post-query)
-      softwareAssetIds.length > 0
-        ? db
-            .select({
-              assetId: assetPurchases.assetId,
-              totalCostLkr: sql<number>`${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1)`,
-            })
-            .from(assetPurchases)
-            .where(inArray(assetPurchases.assetId, softwareAssetIds))
-        : Promise.resolve([]),
     ]);
 
     const totalActiveAssets = Number(assetMetricsRes[0]?.totalActive || 0);
@@ -493,7 +482,10 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       maintenanceMetricsRes.reduce((total, row) => {
         const amount = parseFloat(row[field]?.toString() || '0');
         if (!Number.isFinite(amount) || amount === 0) return total;
-        return total + convertCurrencyAmount(amount, row.currencyCode, 'LKR');
+        return (
+          total +
+          (recordedMoney(amount, row.currencyCode, row.exchangeRate) ?? 0)
+        );
       }, 0);
 
     const cumulativeRepairSpend = sumRepairs('allTimeRepair');
@@ -516,32 +508,32 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       allocationsCountRes.map((a) => [a.licenseId, a.count])
     );
 
-    // Build software purchases map from the parallel query result (values are LKR-normalized)
-    const softwarePurchasesMap = new Map<string, number>(
-      softwarePurchasesRes.map((p) => [
-        p.assetId,
-        parseFloat(p.totalCostLkr?.toString() || '0'),
-      ])
-    );
-
-    const licenses = allLicenses;
-
-    let inactiveSoftwareSeats = 0;
-    let inactiveSoftwareCostLeak = 0;
-
-    licenses.forEach((lic) => {
-      const allocated = allocMap.get(lic.id) || 0;
-      const inactive = Math.max(0, lic.totalSeats - allocated);
+    const softwareTerms = allLicenses.length
+      ? await db
+          .select()
+          .from(softwareFinancialTerms)
+          .where(
+            inArray(
+              softwareFinancialTerms.licenseId,
+              allLicenses.map((l) => l.id)
+            )
+          )
+      : [];
+    let inactiveSoftwareSeats = 0,
+      inactiveSoftwareCostLeak = 0;
+    const softwareAsOf = new Date();
+    for (const lic of allLicenses) {
+      const inactive = Math.max(
+        0,
+        lic.totalSeats - (allocMap.get(lic.id) ?? 0)
+      );
       inactiveSoftwareSeats += inactive;
-
-      const licenseCost = lic.assetId
-        ? softwarePurchasesMap.get(lic.assetId) || 0
-        : 0;
-      const costPerSeat = lic.totalSeats > 0 ? licenseCost / lic.totalSeats : 0;
-      const activeCostPerSeat =
-        costPerSeat > 0 ? costPerSeat : DEFAULT_SOFTWARE_SEAT_COST;
-      inactiveSoftwareCostLeak += inactive * activeCostPerSeat;
-    });
+      const seatCost = softwareMonthlySeatCost(
+        softwareTerms.filter((t) => t.licenseId === lic.id),
+        softwareAsOf
+      );
+      if (seatCost != null) inactiveSoftwareCostLeak += inactive * seatCost;
+    }
 
     const softwareRenewals30Days = expiringLicensesRes.length;
 

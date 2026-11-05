@@ -253,6 +253,11 @@ export async function getDepreciationLedger(
     let fullyDepreciated = 0;
 
     for (const row of summaryRows) {
+      if (
+        recordedMoney(row.originalPrice, row.currencyCode, row.exchangeRate) ==
+        null
+      )
+        continue;
       const price = toLkr(
         row.originalPrice,
         row.currencyCode,

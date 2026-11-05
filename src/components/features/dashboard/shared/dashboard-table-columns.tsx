@@ -721,7 +721,10 @@ export function useSoftwareOptimizationColumns(
         size: 140,
         minSize: 120,
         cell: ({ row }) => {
-          const converted = row.original.costPerSeat * exchangeRate;
+          const converted =
+            row.original.costPerSeat == null
+              ? null
+              : row.original.costPerSeat * exchangeRate;
           return (
             <span className="text-xs text-muted-foreground">
               {formatMoneyByCurrency(converted, currencyCode)}
@@ -735,7 +738,10 @@ export function useSoftwareOptimizationColumns(
         size: 140,
         minSize: 120,
         cell: ({ row }) => {
-          const converted = row.original.monthlyLeak * exchangeRate;
+          const converted =
+            row.original.monthlyLeak == null
+              ? null
+              : row.original.monthlyLeak * exchangeRate;
           return (
             <span className="text-xs font-extrabold text-red-600">
               {formatMoneyByCurrency(converted, currencyCode)}
