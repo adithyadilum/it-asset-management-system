@@ -180,7 +180,7 @@ export function EmployeeAssetDetailDialog({
     isEquipment &&
     Boolean(target.asset.assignmentState) &&
     formatAssignmentState(target.asset.assignmentState).toLowerCase() !==
-      target.asset.status.toLowerCase();
+    target.asset.status.toLowerCase();
 
   const instanceEntries = extractEntries(asset.instanceAttributes);
   const technicalEntries = extractEntries(asset.technicalDetails);
@@ -263,7 +263,7 @@ export function EmployeeAssetDetailDialog({
           ) : null}
 
           {isEquipment &&
-          target.asset.assignmentState === 'pending approval' ? (
+            target.asset.assignmentState === 'pending approval' ? (
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
               <Sparkles className="mt-0.5 size-4 shrink-0" />
               <div>
@@ -537,7 +537,7 @@ export function EmployeeAssetDetailDialog({
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             {isEquipment &&
-            target.asset.assignmentState === 'pending approval' ? (
+              target.asset.assignmentState === 'pending approval' ? (
               <>
                 {onRequestReject ? (
                   <Button

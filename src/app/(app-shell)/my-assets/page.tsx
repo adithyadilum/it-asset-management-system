@@ -7,10 +7,8 @@ import {
 } from '@/actions/employee';
 import { getPortalAlerts } from '@/lib/data/portal-repo';
 import { EmployeeAlerts } from '@/components/features/dashboard/employee/employee-alerts';
-import {
-  EmployeeAssetGrid,
-  EmployeeSoftwareGrid,
-} from '@/components/features/my-assets/employee-asset-grid';
+import { EmployeeAssetGrid } from '@/components/features/my-assets/employee-asset-grid';
+import { EmployeeSoftwareGrid } from '@/components/features/my-assets/employee-software-grid';
 import {
   Empty,
   EmptyDescription,
