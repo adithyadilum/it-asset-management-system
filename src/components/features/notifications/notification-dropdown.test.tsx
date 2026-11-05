@@ -63,6 +63,24 @@ describe('NotificationDropdown', () => {
     onMarkAllAsRead: mockOnMarkAllAsRead,
   };
 
+  it('handles failed fetches with a retry message and no false empty state', async () => {
+    mockOnFetchNotifications.mockRejectedValueOnce(
+      new Error('Failed query containing private parameters')
+    );
+    render(<NotificationDropdown {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'temporarily unavailable'
+    );
+    expect(screen.queryByText('No notifications yet')).not.toBeInTheDocument();
+    expect(screen.queryByText(/private parameters/)).not.toBeInTheDocument();
+    mockOnFetchNotifications.mockResolvedValueOnce(undefined);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    );
+  });
+
   it('renders bell icon and badge correctly when unreadCount > 0', () => {
     render(<NotificationDropdown {...defaultProps} unreadCount={5} />);
 

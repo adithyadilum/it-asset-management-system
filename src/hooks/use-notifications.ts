@@ -92,7 +92,9 @@ export function useNotifications() {
         await mutateSummary();
       } catch (err) {
         await mutateSummary(previousSummary, false);
-        console.error('Failed to mark notification as read:', err);
+        console.warn(
+          'Could not update the notification; its previous state was restored.'
+        );
         throw err;
       }
     },
@@ -117,7 +119,9 @@ export function useNotifications() {
       await mutateSummary();
     } catch (err) {
       await mutateSummary(previousSummary, false);
-      console.error('Failed to mark all notifications as read:', err);
+      console.warn(
+        'Could not update notifications; their previous state was restored.'
+      );
       throw err;
     }
   }, [mutateSummary, notifications, summary]);
@@ -126,7 +130,12 @@ export function useNotifications() {
     notifications,
     unreadCount,
     isLoading,
-    error: error ? (error as Error).message : null,
+    error: error
+      ? 'Notifications are temporarily unavailable. Please try again.'
+      : null,
+    retry: async () => {
+      await mutateSummary();
+    },
     fetchNotifications,
     markAsRead: handleMarkAsRead,
     markAllAsRead: handleMarkAllAsRead,
