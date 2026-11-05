@@ -252,6 +252,47 @@ describe.skipIf(!state.url)(
       expect(metrics.cumulativeRepairSpend).toBe(3000);
       expect(metrics.inactiveSoftwareCostLeak).toBe(4000);
     });
+    it('preserves decimal strings and UTC history while filtering one source snapshot', async () => {
+      const { loadPerHeadDataset } =
+        await import('@/lib/data/per-head-costs-repo');
+      const hardware = await loadPerHeadDataset({ pillar: 'Hardware' });
+      expect(hardware.assets).toHaveLength(1);
+      expect(hardware.assets[0].cost).toBe('1000.00');
+      expect(hardware.assets[0].exchangeRate).toBe('300.000000');
+      expect(hardware.memberships[0].from).toBe(
+        new Date('2026-11-01T00:00:00+05:30').toISOString()
+      );
+      expect(hardware.repairs[0].completedAt).toBe(
+        new Date('2026-11-20T00:00:00+05:30').toISOString()
+      );
+      expect(hardware.terms).toEqual([]);
+      expect(hardware.softwareAllocations).toEqual([]);
+      const software = await loadPerHeadDataset({ pillar: 'Software' });
+      expect(software.assets[0].id).toBe(softwareAssetId);
+      expect(software.terms[0].from).toBe(
+        new Date('2026-11-01T00:00:00+05:30').toISOString()
+      );
+      expect(software.softwareAllocations[0].expiresAt).toBe(
+        new Date('2026-12-01T00:00:00+05:30').toISOString()
+      );
+      expect(software.repairs).toEqual([]);
+    });
+    it('returns empty arrays for an unmatched category without losing people or membership history', async () => {
+      const { loadPerHeadDataset } =
+        await import('@/lib/data/per-head-costs-repo');
+      const empty = await loadPerHeadDataset({ category: 'No such category' });
+      for (const key of [
+        'assets',
+        'policies',
+        'assignments',
+        'repairs',
+        'terms',
+        'softwareAllocations',
+      ] as const)
+        expect(empty[key]).toEqual([]);
+      expect(empty.people).toHaveLength(2);
+      expect(empty.memberships.length).toBeGreaterThan(0);
+    });
     it('serializes membership edits and refuses overlapping intervals', async () => {
       const { saveFinancialMembership } =
         await import('@/actions/financial-configuration');

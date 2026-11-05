@@ -183,7 +183,7 @@ A later read-only data audit found **162 assets** where the existing depreciatio
 - Recorded costs use LKR recognition and exact cent allocation. Missing prices, rates, policy history, or ambiguous records remain internal diagnostics; runtime calculations never invent prices. Unknown current asset amounts display an em dash.
 - Software registration captures an initial priced term when coverage/life is available. Renewal preserves dated prices and seat counts. Missing perpetual life or legacy software prices require configuration rather than an invented default.
 - Department synchronization preserves membership transitions. Disabling a user closes their open financial memberships. Reliable shared history begins at rollout; older direct custody can still be used when its timestamps are available.
-- Report source reads use a repeatable-read, read-only database transaction. Detail lines are generated only for a requested person. Bulk reads avoid a query per employee.
+- Report source reads use one read-only SQL statement with a consistent PostgreSQL MVCC snapshot. Detail lines are generated only for a requested person. Bulk reads avoid a query per employee.
 - Existing financial ledgers now normalize repair currencies independently, use stored transaction FX for totals, avoid duplicate acquisition joins, and export every matching page with CSV escaping. Dashboard software estimates use paid terms; absent prices display as unknown. New asset registration persists the residual used by depreciation.
 - The disposal review query now returns the model image and the wrapper forwards it to the review panel. Changing the selected request clears previously fetched details.
 
@@ -235,3 +235,11 @@ Reproduce the database checks with `npm run test:financial-db` using local Postg
 - Isolated browser verification passed for person filtering, complete CSV export, drill-down, all three settings dialogs, and auditor permissions.
 - Read-only browser previews use the actual Neon exhibition records and check rendered chart sectors/bars at 1600px and responsive summary cards at 1024px. Screenshots are saved under ignored `test-results/financial-demo/`.
 - `node scripts/smoke-per-head-ui.mjs --demo` is an explicit **read-only** preview against `DATABASE_URL`. Without that flag, the browser script refuses any connection except its disposable local test database. Demo preview never saves settings or changes roles.
+
+## Per-head loading performance (6 November 2026)
+
+Profiling the connected demo database (498 assets, 35 people) separated source reads from allocation work. The former transaction made twelve SELECTs plus BEGIN/COMMIT; Promise.all on one transaction connection did not remove its sequential network round trips. Source reads took 1.8-2.2 seconds while calculation took 44-55 ms.
+
+The loader now projects all financial sources in one SELECT with scoped asset/licence CTEs. It retains exact decimal strings, explicitly normalizes both timestamp conventions, reads one coherent statement snapshot, and does not cache or truncate history. Warm reads measured 318-323 ms and the initial read 1,054 ms. Local before/after snapshots produced identical people, details, current values, trends, and reconciliation totals at the same reporting instant.
+
+Use `node --conditions=react-server --import tsx scripts/profile-per-head.mts` to measure three read-only loads. Snapshots are stored under ignored `test-results/per-head-performance/`. Pass `--after` for the post-change snapshot and `--compare` to compare reports from the two snapshots. This explicit diagnostic uses DATABASE_URL and never changes records.
