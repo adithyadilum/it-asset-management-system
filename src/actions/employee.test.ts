@@ -173,17 +173,19 @@ describe('getCurrentEmployeeSoftwareAssets', () => {
     );
 
     const res = await getCurrentEmployeeSoftwareAssets();
+    expect(res[0]).not.toHaveProperty('licenseKey');
     expect(res).toEqual([
       {
         allocationId: 7,
         assetId: 'software-asset-id',
         assetTag: 'SFT-001',
-        licenseKey: 'LIC-123',
         modelName: 'Microsoft 365',
         status: 'active',
         allocatedDate: mockDate.toISOString(),
         licenseType: 'Subscription',
         pillar: 'Software',
+        technicalDetails: null,
+        instanceAttributes: null,
       },
     ]);
   });
