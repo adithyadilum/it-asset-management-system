@@ -48,6 +48,7 @@ vi.mock('@/lib/env', () => ({
 // ---------------------------------------------------------------------------
 
 import { getAuthenticatedUser, getFederatedLogoutUrl } from '@/actions/auth';
+import { ServiceUnavailableError } from '@/lib/service-availability';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -67,6 +68,30 @@ describe('getAuthenticatedUser', () => {
   it('returns null when no session exists', async () => {
     mockGetServerSession.mockResolvedValue(null);
     expect(await getAuthenticatedUser()).toBeNull();
+  });
+
+  it('keeps a temporary database outage distinct from an unauthenticated session', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com', name: 'Admin', role: 'GlobalAdmin' },
+    });
+    mockFindUser.mockRejectedValue(
+      new Error('Connection terminated unexpectedly')
+    );
+    await expect(getAuthenticatedUser()).rejects.toBeInstanceOf(
+      ServiceUnavailableError
+    );
+    expect(mockFindUser).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers once and respects a disabled account instead of trusting the cookie role', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com', name: 'Admin', role: 'GlobalAdmin' },
+    });
+    mockFindUser
+      .mockRejectedValueOnce(new Error('Connection terminated unexpectedly'))
+      .mockResolvedValueOnce({ id: 'u1', isActive: false });
+    expect(await getAuthenticatedUser()).toBeNull();
+    expect(mockFindUser).toHaveBeenCalledTimes(2);
   });
 
   it('returns null when session has RefreshAccessTokenError', async () => {

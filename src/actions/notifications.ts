@@ -14,6 +14,7 @@ import { encrypt, decrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
 import { Resend } from 'resend';
 import { serverEnv } from '@/lib/env';
+import { readDatabase } from '@/lib/database-recovery';
 import {
   getNotificationsParamsSchema,
   markAsReadParamsSchema,
@@ -82,15 +83,17 @@ export async function getUnreadCount() {
     const user = await getAuthenticatedUser();
     if (!user) return 0;
 
-    const [result] = await db
-      .select({ count: count() })
-      .from(appNotifications)
-      .where(
-        and(
-          eq(appNotifications.userId, user.id),
-          eq(appNotifications.isRead, false)
+    const [result] = await readDatabase(() =>
+      db
+        .select({ count: count() })
+        .from(appNotifications)
+        .where(
+          and(
+            eq(appNotifications.userId, user.id),
+            eq(appNotifications.isRead, false)
+          )
         )
-      );
+    );
 
     return result.count;
   } finally {
@@ -117,13 +120,15 @@ export async function getNotifications(limit = 10, offset = 0) {
     }
     const { limit: safeLimit, offset: safeOffset } = validation.data;
 
-    const data = await db
-      .select()
-      .from(appNotifications)
-      .where(eq(appNotifications.userId, user.id))
-      .orderBy(desc(appNotifications.createdAt))
-      .limit(safeLimit)
-      .offset(safeOffset);
+    const data = await readDatabase(() =>
+      db
+        .select()
+        .from(appNotifications)
+        .where(eq(appNotifications.userId, user.id))
+        .orderBy(desc(appNotifications.createdAt))
+        .limit(safeLimit)
+        .offset(safeOffset)
+    );
 
     return data;
   } finally {
@@ -160,33 +165,35 @@ export async function getNotificationSummary(limit = 10, offset = 0) {
     // the count is served from the is_read index. Issued together so this is
     // still a single round trip's worth of latency, which matters when the
     // database is a region away.
-    const [rows, [unread]] = await Promise.all([
-      db
-        .select({
-          id: appNotifications.id,
-          userId: appNotifications.userId,
-          title: appNotifications.title,
-          message: appNotifications.message,
-          targetUrl: appNotifications.targetUrl,
-          isRead: appNotifications.isRead,
-          eventType: appNotifications.eventType,
-          createdAt: appNotifications.createdAt,
-        })
-        .from(appNotifications)
-        .where(eq(appNotifications.userId, user.id))
-        .orderBy(desc(appNotifications.createdAt))
-        .limit(safeLimit)
-        .offset(safeOffset),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(appNotifications)
-        .where(
-          and(
-            eq(appNotifications.userId, user.id),
-            eq(appNotifications.isRead, false)
-          )
-        ),
-    ]);
+    const [rows, [unread]] = await readDatabase(() =>
+      Promise.all([
+        db
+          .select({
+            id: appNotifications.id,
+            userId: appNotifications.userId,
+            title: appNotifications.title,
+            message: appNotifications.message,
+            targetUrl: appNotifications.targetUrl,
+            isRead: appNotifications.isRead,
+            eventType: appNotifications.eventType,
+            createdAt: appNotifications.createdAt,
+          })
+          .from(appNotifications)
+          .where(eq(appNotifications.userId, user.id))
+          .orderBy(desc(appNotifications.createdAt))
+          .limit(safeLimit)
+          .offset(safeOffset),
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(appNotifications)
+          .where(
+            and(
+              eq(appNotifications.userId, user.id),
+              eq(appNotifications.isRead, false)
+            )
+          ),
+      ])
+    );
 
     return {
       notifications: rows,

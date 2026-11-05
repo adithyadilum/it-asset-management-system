@@ -10,6 +10,7 @@ import { serverEnv } from '@/lib/env';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { readDatabase } from '@/lib/database-recovery';
 
 function normalizeRole(role: unknown): UserRole {
   if (
@@ -60,10 +61,18 @@ async function loadAuthenticatedUser(): Promise<AuthenticatedUser | null> {
     return null;
   }
 
-  const currentUser = await db.query.users.findFirst({
-    where: eq(users.id, id),
-    columns: { id: true, email: true, name: true, role: true, isActive: true },
-  });
+  const currentUser = await readDatabase(() =>
+    db.query.users.findFirst({
+      where: eq(users.id, id),
+      columns: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+      },
+    })
+  );
   if (!currentUser?.isActive) return null;
 
   return {
