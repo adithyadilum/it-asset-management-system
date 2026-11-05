@@ -17,6 +17,7 @@ export interface CostAsset {
   currency: string | null;
   exchangeRate: string | null;
   residual: string | null;
+  purchaseResidual?: string | null;
   lifeMonths: number | null;
   disposedAt: string | null;
   purchaseCount: number;

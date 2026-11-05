@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DAY_MS, localDate, reportDate } from '@/lib/reporting-time';
 
 import { renewSoftwareLicenseAction } from '@/actions/software';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -86,6 +87,16 @@ function RenewLicenseForm({
     currentSeats ? String(currentSeats) : ''
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [renewalAmount, setRenewalAmount] = useState('');
+  const [renewalCurrency, setRenewalCurrency] = useState<'LKR' | 'USD' | 'NOK'>(
+    'LKR'
+  );
+  const [renewalExchangeRate, setRenewalExchangeRate] = useState('');
+  const [coverageStart, setCoverageStart] = useState(() =>
+    currentExpiry && currentExpiry >= localDate(Date.now())
+      ? localDate(reportDate(currentExpiry) + DAY_MS)
+      : localDate(Date.now())
+  );
 
   const handleTermChange = (value: string) => {
     setTerm(value);
@@ -101,6 +112,10 @@ function RenewLicenseForm({
         expiryDate: expiryDate || undefined,
         // Sent as a string so the shared coercion in the schema handles it.
         totalSeats: seats || undefined,
+        renewalAmount,
+        renewalCurrency,
+        renewalExchangeRate: renewalExchangeRate || undefined,
+        coverageStart,
       } as never);
 
       if (!result.success) {
@@ -128,6 +143,60 @@ function RenewLicenseForm({
       </DialogHeader>
 
       <div className="space-y-4 py-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="renew-coverage">Paid coverage starts</Label>
+          <Input
+            id="renew-coverage"
+            type="date"
+            value={coverageStart}
+            onChange={(event) => setCoverageStart(event.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="renew-amount">Total renewal cost</Label>
+          <Input
+            id="renew-amount"
+            type="number"
+            min="0"
+            step="0.01"
+            value={renewalAmount}
+            onChange={(event) => setRenewalAmount(event.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="renew-currency">Cost currency</Label>
+          <select
+            id="renew-currency"
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            value={renewalCurrency}
+            onChange={(event) =>
+              setRenewalCurrency(event.target.value as 'LKR' | 'USD' | 'NOK')
+            }
+          >
+            {['LKR', 'USD', 'NOK'].map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        {renewalCurrency !== 'LKR' && (
+          <div className="space-y-1.5">
+            <Label htmlFor="renew-rate">
+              Recorded exchange rate to LKR (optional)
+            </Label>
+            <Input
+              id="renew-rate"
+              type="number"
+              min="0"
+              step="0.000001"
+              value={renewalExchangeRate}
+              onChange={(event) => setRenewalExchangeRate(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Leave blank to capture the rate available when recording this
+              payment.
+            </p>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label>Renewal term</Label>
           <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
@@ -187,7 +256,12 @@ function RenewLicenseForm({
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={isSubmitting || (!expiryDate && !seats)}
+          disabled={
+            isSubmitting ||
+            (!expiryDate && !seats) ||
+            !renewalAmount ||
+            !coverageStart
+          }
         >
           {isSubmitting ? 'Renewing…' : 'Renew licence'}
         </Button>

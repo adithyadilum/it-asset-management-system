@@ -1,4 +1,5 @@
 'use server';
+import { recordInitialSoftwareTerm } from '@/lib/data/software-financial-history';
 
 import { revalidatePath } from 'next/cache';
 import { and, eq, isNull, sql } from 'drizzle-orm';
@@ -291,38 +292,59 @@ export async function registerAsset(
           )
         : null;
 
-      await tx.insert(assetPurchases).values({
-        assetId: insertedAsset.id,
-        vendorId: input.vendorId,
-        purchaseDate: toDateString(purchaseDate),
-        basePrice: basePrice.toFixed(2),
-        tax: tax.toFixed(2),
-        shippingCost: shippingCost.toFixed(2),
-        totalCost: totalCost.toFixed(2),
-        estimatedSalvageValue:
-          input.estimatedSalvageValue != null
-            ? input.estimatedSalvageValue.toFixed(2)
-            : null,
-        currencyCode: input.currencyCode,
-        exchangeRate: conversionRate,
-        warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
-        invoiceUrl: uploadedInvoiceUrl,
-      });
+      const [purchase] = await tx
+        .insert(assetPurchases)
+        .values({
+          assetId: insertedAsset.id,
+          vendorId: input.vendorId,
+          purchaseDate: toDateString(purchaseDate),
+          basePrice: basePrice.toFixed(2),
+          tax: tax.toFixed(2),
+          shippingCost: shippingCost.toFixed(2),
+          totalCost: totalCost.toFixed(2),
+          estimatedSalvageValue:
+            input.estimatedSalvageValue != null
+              ? input.estimatedSalvageValue.toFixed(2)
+              : null,
+          currencyCode: input.currencyCode,
+          exchangeRate: conversionRate,
+          warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
+          invoiceUrl: uploadedInvoiceUrl,
+        })
+        .returning({ id: assetPurchases.id });
 
       if (input.pillar === 'Software') {
-        await tx.insert(softwareLicenses).values({
-          modelId: input.modelId,
-          assetId: insertedAsset.id,
-          licenseKey: input.serialNumber || null,
-          licenseType: input.licenseType || 'Subscription',
-          totalSeats: input.totalSeats ?? 1,
-          startDate: input.licenseStartDate
-            ? toDateString(input.licenseStartDate)
-            : null,
-          expiryDate: input.licenseExpiryDate
-            ? toDateString(input.licenseExpiryDate)
-            : null,
-        });
+        const [license] = await tx
+          .insert(softwareLicenses)
+          .values({
+            modelId: input.modelId,
+            assetId: insertedAsset.id,
+            licenseKey: input.serialNumber || null,
+            licenseType: input.licenseType || 'Subscription',
+            totalSeats: input.totalSeats ?? 1,
+            startDate: input.licenseStartDate
+              ? toDateString(input.licenseStartDate)
+              : null,
+            expiryDate: input.licenseExpiryDate
+              ? toDateString(input.licenseExpiryDate)
+              : null,
+          })
+          .returning({ id: softwareLicenses.id });
+        if (purchase && license)
+          await recordInitialSoftwareTerm(tx, {
+            licenseId: license.id,
+            purchaseId: purchase.id,
+            amount: totalCost.toFixed(2),
+            currency: input.currencyCode || 'LKR',
+            exchangeRate: conversionRate,
+            licenseType: input.licenseType || 'Subscription',
+            seats: input.totalSeats ?? 1,
+            startDate: toDateString(input.licenseStartDate ?? purchaseDate),
+            expiryDate: input.licenseExpiryDate
+              ? toDateString(input.licenseExpiryDate)
+              : null,
+            allocationLifeMonths: input.usefulLifeMonths,
+          });
       }
 
       // Give the asset the assignment its status implies. Without this the

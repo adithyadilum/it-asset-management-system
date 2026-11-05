@@ -1,3 +1,4 @@
+import { synchronizeFinancialDepartment } from '@/lib/data/financial-membership-history';
 import { logInfo } from '@/lib/latency';
 import '@/lib/auth/patch-url-parse';
 
@@ -427,20 +428,28 @@ export const authOptions: NextAuthOptions = {
       // JIT Provisioning
       if (!existingUser) {
         try {
-          await db.insert(users).values({
-            email: normalizedEmail,
-            // Fallback to preferred_username if name isn't set in Keycloak/Entra
-            name:
-              profile?.name ||
-              ((profile as Record<string, unknown>)
-                ?.preferred_username as string) ||
-              user?.name ||
-              'New User',
-            // CRITICAL: Always default to the lowest privilege tier
-            role: 'Employee',
-            isActive: true,
-            departmentId: userDepartmentId,
-          });
+          const [provisioned] = await db
+            .insert(users)
+            .values({
+              email: normalizedEmail,
+              // Fallback to preferred_username if name isn't set in Keycloak/Entra
+              name:
+                profile?.name ||
+                ((profile as Record<string, unknown>)
+                  ?.preferred_username as string) ||
+                user?.name ||
+                'New User',
+              // CRITICAL: Always default to the lowest privilege tier
+              role: 'Employee',
+              isActive: true,
+              departmentId: userDepartmentId,
+            })
+            .returning({ id: users.id });
+          if (provisioned && userDepartmentId)
+            await synchronizeFinancialDepartment(
+              provisioned.id,
+              userDepartmentId
+            );
           logInfo(`[AUTH] JIT Provisioned new user: ${normalizedEmail}`);
         } catch (error) {
           console.error('Failed to auto-provision user:', error);
@@ -455,15 +464,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Keep user department in sync
-        if (
-          userDepartmentId &&
-          existingUser.departmentId !== userDepartmentId
-        ) {
+        if (userDepartmentId) {
           try {
-            await db
-              .update(users)
-              .set({ departmentId: userDepartmentId })
-              .where(eq(users.id, existingUser.id));
+            await synchronizeFinancialDepartment(
+              existingUser.id,
+              userDepartmentId
+            );
             logInfo(
               `[AUTH] Synced department for existing user: ${normalizedEmail}`
             );
