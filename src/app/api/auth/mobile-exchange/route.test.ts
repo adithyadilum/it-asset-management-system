@@ -65,7 +65,7 @@ describe('POST /api/auth/mobile-exchange', () => {
     vi.clearAllMocks();
   });
 
-  // NOTE: role must be 'GlobalAdmin' — non-admin tokens are rejected by the RBAC backstop.
+  // Fixture uses GlobalAdmin; the RBAC backstop also permits IT operators.
   const mockUser = {
     id: '11111111-1111-4111-8111-111111111111',
     role: 'GlobalAdmin',
@@ -209,7 +209,7 @@ describe('POST /api/auth/mobile-exchange — RBAC backstop', () => {
     expect(mockInsertValues).not.toHaveBeenCalled();
   });
 
-  it('returns 403 when the QR token was minted by an ITOperator', async () => {
+  it('returns a mobile session when the QR token was minted by an ITOperator', async () => {
     const operator = {
       id: '33333333-3333-4333-8333-333333333333',
       role: 'ITOperator',
@@ -227,11 +227,11 @@ describe('POST /api/auth/mobile-exchange — RBAC backstop', () => {
     });
 
     const response = await POST(req);
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.error).toMatch(/Forbidden/i);
+    expect(body.accessToken).toEqual(expect.any(String));
 
-    // Ensure no device was persisted in the database
-    expect(mockInsertValues).not.toHaveBeenCalled();
+    // The operator receives a device-scoped session.
+    expect(mockInsertValues).toHaveBeenCalled();
   });
 });

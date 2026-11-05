@@ -6,6 +6,7 @@ import {
 import { z } from 'zod';
 import { omniSearchQuerySchema } from '../validations/omni-search';
 import { updateNotificationRuleSchema } from '../validations/settings';
+import { flagForRepairSchema } from '../validations/maintenance';
 
 // Apply the OpenAPI extensions to the Zod library
 extendZodWithOpenApi(z);
@@ -191,8 +192,8 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            barcode: z.string().openapi({
-              description: 'The scanned asset tag or serial barcode string',
+            assetTag: z.string().min(1).openapi({
+              description: 'The scanned asset tag or asset detail URL',
             }),
           }),
         },
@@ -207,6 +208,22 @@ registry.registerPath({
           schema: z.object({
             success: z.boolean(),
             message: z.string(),
+            data: z
+              .object({
+                asset: z
+                  .object({ id: z.string(), assetTag: z.string() })
+                  .passthrough(),
+                model: z
+                  .object({ id: z.number(), name: z.string() })
+                  .passthrough(),
+                purchase: z.record(z.string(), z.unknown()).nullable(),
+                vendor: z.record(z.string(), z.unknown()).nullable(),
+              })
+              .passthrough()
+              .openapi({
+                description:
+                  'Asset detail payload. Purchase, vendor, and licence keys are redacted for IT operators.',
+              }),
           }),
         },
       },
@@ -1150,6 +1167,115 @@ registry.registerPath({
 // ==========================================
 // 4. OpenAPI Specification Exporter
 // ==========================================
+
+const mobileResponses = (schema: z.ZodType) => ({
+  200: { description: 'Success', content: { 'application/json': { schema } } },
+  400: {
+    description: 'Invalid request',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  401: {
+    description: 'Unpaired or expired device',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  403: {
+    description: 'Requires GlobalAdmin or ITOperator',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/assets/my-assets',
+  summary: 'Get equipment assigned to the paired user',
+  security: [{ MobileBearerAuth: [] }],
+  tags: ['Device Operations'],
+  responses: mobileResponses(
+    z.object({
+      data: z.array(
+        z.object({
+          id: z.string().uuid(),
+          assignmentId: z.number().int(),
+          name: z.string(),
+          tagId: z.string(),
+          status: z.string(),
+          statusLabel: z.string(),
+          state: z.string(),
+          category: z.string().optional(),
+          pillar: z.string().optional(),
+          serialNumber: z.string().optional(),
+          imageUrl: z.string().optional(),
+          assignedDate: z.string().optional(),
+          expectedReturnDate: z.string().optional(),
+          location: z.string().optional(),
+          assignedByName: z.string().optional(),
+          condition: z.string().optional(),
+        })
+      ),
+    })
+  ),
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/assets/assignments/{id}/acknowledge',
+  summary: 'Accept an open assignment owned by the paired user',
+  security: [{ MobileBearerAuth: [] }],
+  tags: ['Device Operations'],
+  request: { params: z.object({ id: z.string().regex(/^[1-9]\d*$/) }) },
+  responses: {
+    ...mobileResponses(z.object({ success: z.boolean() })),
+    409: {
+      description:
+        'Assignment already closed, accepted, or not owned by this user',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/dashboard/stats',
+  summary: 'Get operational dashboard counts',
+  security: [{ MobileBearerAuth: [] }],
+  tags: ['Device Operations'],
+  responses: mobileResponses(
+    z.object({
+      data: z.object({
+        pendingDisposals: z.number(),
+        softwareRenewals: z.number(),
+        overdueReturns: z.number(),
+        warrantyExpiry: z.number(),
+      }),
+    })
+  ),
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/issues',
+  summary: 'Report equipment for repair',
+  description:
+    'Creates an internal maintenance ticket and ends open custody. An identical retry returns the existing open ticket.',
+  security: [{ MobileBearerAuth: [] }, { CookieAuth: [] }],
+  tags: ['Device Operations'],
+  request: {
+    body: { content: { 'application/json': { schema: flagForRepairSchema } } },
+  },
+  responses: {
+    ...mobileResponses(
+      z.object({
+        success: z.boolean(),
+        ticketId: z.number(),
+        message: z.string(),
+      })
+    ),
+    404: {
+      description: 'Asset not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    409: {
+      description: 'Open maintenance ticket or terminal asset',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
 
 export function getOpenApiSpec() {
   const generator = new OpenApiGeneratorV3(registry.definitions);

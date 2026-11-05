@@ -20,7 +20,7 @@ import { getFederatedLogoutUrl } from '@/actions/auth';
 import { signOut } from 'next-auth/react';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 import { useCurrency } from '@/components/providers/currency-provider';
-import { isGlobalAdmin } from '@/lib/auth/roles';
+import { canAccessMobile } from '@/lib/auth/roles';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -355,8 +355,8 @@ export function TopHeader({ user }: TopHeaderProps) {
                 </DropdownMenuSub>
               </div>
 
-              {/* Link Device — GlobalAdmin only */}
-              {isGlobalAdmin(user.role) && (
+              {/* Link Device - asset-management roles */}
+              {canAccessMobile(user.role) && (
                 <div className="p-2 border-b border-border">
                   <Button
                     variant="ghost"

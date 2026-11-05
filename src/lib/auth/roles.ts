@@ -58,13 +58,9 @@ export function canViewAuditLog(role: UserRole): boolean {
   );
 }
 
-/** All roles except Employee can use the mobile app. */
+/** Desktop-paired field companion: asset-management roles only. */
 export function canAccessMobile(role: UserRole): boolean {
-  return (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinancialAuditor'
-  );
+  return canManageAssets(role);
 }
 
 // ─── Server-Side Assert Guard ────────────────────────────────────────────────

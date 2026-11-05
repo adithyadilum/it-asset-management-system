@@ -92,7 +92,16 @@ describe('POST /api/auth/generate-qr', () => {
     expect(mockLogAuditAction).not.toHaveBeenCalled();
   });
 
-  it.each([['ITOperator'], ['FinancialAuditor'], ['Employee']])(
+  it('permits an IT operator to pair a field companion', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(makeSession('ITOperator'));
+    expect((await POST()).status).toBe(200);
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      expect.stringMatching(/^qr_link:/),
+      expect.stringContaining('"role":"ITOperator"'),
+      { ex: 60 }
+    );
+  });
+  it.each([['FinancialAuditor'], ['Employee']])(
     'returns 403 for role "%s" and logs the attempt',
     async (role) => {
       mockGetAuthenticatedUser.mockResolvedValue(makeSession(role));

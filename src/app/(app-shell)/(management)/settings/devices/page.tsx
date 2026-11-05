@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { PageSkeleton } from '@/components/shared/page-skeleton';
+import { canAccessMobile } from '@/lib/auth/roles';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { getLinkedDevices } from '@/lib/data/devices-repo';
 import { DevicesPageClient } from '@/components/features/devices/devices-page-client';
@@ -13,7 +14,7 @@ import { DevicesPageClient } from '@/components/features/devices/devices-page-cl
 export const instant = false;
 
 async function LinkedDevicesPageContent() {
-  const user = await requirePageAuth((role) => role === 'GlobalAdmin');
+  const user = await requirePageAuth(canAccessMobile);
 
   const devices = await getLinkedDevices(user.id);
 

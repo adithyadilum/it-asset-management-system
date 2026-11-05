@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import { logAuditAction } from '@/lib/audit';
-import { isGlobalAdmin } from '@/lib/auth/roles';
+import { canAccessMobile } from '@/lib/auth/roles';
 import crypto from 'crypto';
 import { serverEnv } from '@/lib/env';
 import { getAuthenticatedUser } from '@/actions/auth';
@@ -16,8 +16,8 @@ export async function POST() {
   if (!user)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // RBAC: Only GlobalAdmin may generate a mobile pairing QR token.
-  if (!isGlobalAdmin(user.role)) {
+  // Pairing is available to GlobalAdmins and IT operators.
+  if (!canAccessMobile(user.role)) {
     await logAuditAction({
       entityType: 'linked_devices',
       entityId: user.id,
@@ -26,13 +26,13 @@ export async function POST() {
       newData: {
         attemptedByRole: user.role,
         reason:
-          'Non-admin user attempted to generate a mobile pairing QR token.',
+          'An unauthorized role attempted to generate a mobile pairing QR token.',
       },
     });
     return NextResponse.json(
       {
         error:
-          'Forbidden: Only Global Administrators can link a mobile device.',
+          'Forbidden: Only Global Administrators and IT Operators can link a mobile device.',
       },
       { status: 403 }
     );

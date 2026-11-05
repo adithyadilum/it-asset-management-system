@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { assetAssignments, notificationQueue } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { logAuditActionTx } from '@/lib/audit';
 import { withMobileAuth } from '@/lib/api/with-auth';
 import { canAccessMobile } from '@/lib/auth/roles';
@@ -24,7 +24,7 @@ export const POST = withMobileAuth<{ params: Promise<{ id: string }> }>(
     // --- 2. Parse assignment ID from route params ---
     const { id } = await params;
     const assignmentId = parseInt(id, 10);
-    if (isNaN(assignmentId)) {
+    if (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(assignmentId)) {
       return NextResponse.json(
         { error: 'Invalid assignment ID' },
         { status: 400 }
@@ -46,7 +46,8 @@ export const POST = withMobileAuth<{ params: Promise<{ id: string }> }>(
             and(
               eq(assetAssignments.id, assignmentId),
               eq(assetAssignments.assignedToUserId, userId),
-              eq(assetAssignments.state, 'pending approval')
+              eq(assetAssignments.state, 'pending approval'),
+              isNull(assetAssignments.returnedDate)
             )
           )
           .returning({ id: assetAssignments.id });

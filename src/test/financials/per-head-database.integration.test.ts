@@ -522,5 +522,65 @@ describe.skipIf(!state.url)(
       expect(purchase.estimatedSalvageValue).toBe('125.00');
       expect(asset.salvageValue).toBe('200.00');
     });
+    it('serializes mobile issue retries, closes custody, and rejects terminal assets', async () => {
+      const { recordMobileIssue } =
+        await import('@/lib/data/mobile-issues-repo');
+      const [original] = await db
+        .select()
+        .from(schema.assets)
+        .where(eq(schema.assets.id, assetId));
+      const [asset] = await db
+        .insert(schema.assets)
+        .values({
+          modelId: original.modelId,
+          assetTag: 'MOBILE-REPAIR-001',
+          status: 'Assigned',
+        })
+        .returning();
+      const [assignment] = await db
+        .insert(schema.assetAssignments)
+        .values({
+          assetId: asset.id,
+          assignedToUserId: state.user.id,
+          assignedById: state.user.id,
+          state: 'pending approval',
+          acceptanceStatus: 'pending',
+        })
+        .returning();
+      const input = {
+        assetId: asset.id,
+        issueNote: 'Display flickers when the power cable is connected.',
+      };
+      const results = await Promise.all([
+        recordMobileIssue(input, state.user.id),
+        recordMobileIssue(input, state.user.id),
+      ]);
+      expect(results[0].ticketId).toBe(results[1].ticketId);
+      const tickets = await db
+        .select()
+        .from(schema.maintenanceTickets)
+        .where(eq(schema.maintenanceTickets.assetId, asset.id));
+      expect(tickets).toHaveLength(1);
+      const [closed] = await db
+        .select()
+        .from(schema.assetAssignments)
+        .where(eq(schema.assetAssignments.id, assignment.id));
+      expect(closed.state).toBe('returned');
+      expect(closed.returnedDate).toBeInstanceOf(Date);
+      expect(closed.acceptanceStatus).toBe('cancelled');
+      await expect(
+        recordMobileIssue(
+          { ...input, issueNote: 'Another fault' },
+          state.user.id
+        )
+      ).rejects.toMatchObject({ status: 409 });
+      await db
+        .update(schema.assets)
+        .set({ status: 'Disposed' })
+        .where(eq(schema.assets.id, asset.id));
+      await expect(
+        recordMobileIssue(input, state.user.id)
+      ).rejects.toMatchObject({ status: 409 });
+    });
   }
 );

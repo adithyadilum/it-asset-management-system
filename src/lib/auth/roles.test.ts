@@ -9,6 +9,7 @@ import {
   canManageAssets,
   canAccessFinancials,
   canAccessOperations,
+  canAccessMobile,
 } from '@/lib/auth/roles';
 
 const ALL_ROLES: UserRole[] = [
@@ -17,6 +18,14 @@ const ALL_ROLES: UserRole[] = [
   'FinancialAuditor',
   'Employee',
 ];
+
+describe('canAccessMobile', () => {
+  it.each(ALL_ROLES)('limits mobile pairing to asset managers: %s', (role) => {
+    expect(canAccessMobile(role)).toBe(
+      ['GlobalAdmin', 'ITOperator'].includes(role)
+    );
+  });
+});
 
 describe('isGlobalAdmin', () => {
   it('returns true only for GlobalAdmin', () => {

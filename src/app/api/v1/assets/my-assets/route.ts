@@ -8,7 +8,7 @@ import {
   models,
   users,
 } from '@/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 import { withMobileAuth } from '@/lib/api/with-auth';
 import { canAccessMobile } from '@/lib/auth/roles';
 
@@ -16,9 +16,7 @@ import { canAccessMobile } from '@/lib/auth/roles';
  * Maps a backend asset status string to the mobile enum value.
  * The mobile app uses lowercase snake_case for statuses.
  */
-function mapStatus(
-  status: string
-): 'assigned' | 'repair' | 'lost' | 'disposed' | 'new' {
+function mapStatus(status: string): string {
   switch (status) {
     case 'Assigned':
       return 'assigned';
@@ -27,12 +25,12 @@ function mapStatus(
     case 'Lost':
       return 'lost';
     case 'Disposed':
-    case 'Pending Disposal':
       return 'disposed';
     case 'Available':
     case 'New':
-    default:
       return 'new';
+    default:
+      return status.toLowerCase().replace(/\s+/g, '_');
   }
 }
 
@@ -48,7 +46,7 @@ function mapStatus(
  *     assignmentId: number; // assignment row id
  *     name: string;
  *     tagId: string;
- *     status: 'assigned' | 'repair' | 'lost' | 'disposed' | 'new';
+ *     status: string;       // normalized status, with original in statusLabel
  *     state: string;        // raw assignment state e.g. 'pending approval'
  *     category?: string;
  *     pillar?: string;
@@ -81,6 +79,9 @@ export const GET = withMobileAuth(canAccessMobile, async (_req, { user }) => {
         assetTag: assets.assetTag,
         assetName: assets.name,
         assetStatus: assets.status,
+        serialNumber: assets.serialNumber,
+        modelName: models.name,
+        imageUrl: models.imageUrl,
         // Category (via model)
         categoryName: categories.name,
         pillar: categories.pillar,
@@ -98,16 +99,25 @@ export const GET = withMobileAuth(canAccessMobile, async (_req, { user }) => {
       .where(
         and(
           eq(assetAssignments.assignedToUserId, userId),
-          isNull(assetAssignments.returnedDate)
+          isNull(assetAssignments.returnedDate),
+          inArray(assetAssignments.state, [
+            'assigned',
+            'pending approval',
+            'overdue',
+            'requested',
+          ])
         )
       );
 
     const data = rows.map((row) => ({
       id: row.assetId,
       assignmentId: row.assignmentId,
-      name: row.assetName ?? row.assetTag,
+      name: row.assetName ?? row.modelName ?? row.assetTag,
       tagId: row.assetTag,
       status: mapStatus(row.assetStatus),
+      statusLabel: row.assetStatus,
+      serialNumber: row.serialNumber ?? undefined,
+      imageUrl: row.imageUrl ?? undefined,
       state: row.state,
       category: row.categoryName ?? undefined,
       pillar: row.pillar ?? undefined,

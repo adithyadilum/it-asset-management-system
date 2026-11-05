@@ -45,6 +45,7 @@ type NavItem = {
   labelByRole?: Partial<Record<UserRole, string>>;
   icon: LucideIcon;
   href?: string;
+  hrefByRole?: Partial<Record<UserRole, string>>;
   children?: NavChild[];
   allowedRoles?: UserRole[];
 };
@@ -137,12 +138,29 @@ const managementItems: NavItem[] = [
     label: 'Settings',
     icon: Settings,
     href: '/settings',
-    allowedRoles: ['GlobalAdmin'],
+    hrefByRole: { ITOperator: '/settings/devices' },
+    allowedRoles: ['GlobalAdmin', 'ITOperator'],
     children: [
-      { label: 'Master Data', href: '/settings/master-data' },
-      { label: 'User Roles & Access', href: '/settings/roles' },
-      { label: 'Alerts & Notifications', href: '/settings/alerts' },
-      { label: 'Integrations', href: '/settings/integrations' },
+      {
+        label: 'Master Data',
+        href: '/settings/master-data',
+        allowedRoles: ['GlobalAdmin'],
+      },
+      {
+        label: 'User Roles & Access',
+        href: '/settings/roles',
+        allowedRoles: ['GlobalAdmin'],
+      },
+      {
+        label: 'Alerts & Notifications',
+        href: '/settings/alerts',
+        allowedRoles: ['GlobalAdmin'],
+      },
+      {
+        label: 'Integrations',
+        href: '/settings/integrations',
+        allowedRoles: ['GlobalAdmin'],
+      },
       { label: 'Linked Devices', href: '/settings/devices' },
     ],
   },
@@ -249,7 +267,11 @@ function NavGroup({
           isAllowedForRole(userRole, child.allowedRoles)
         );
         const hasChildren = children.length > 0;
-        const defaultHref = item.href ?? children[0]?.href ?? '/dashboard';
+        const defaultHref =
+          item.hrefByRole?.[userRole] ??
+          item.href ??
+          children[0]?.href ??
+          '/dashboard';
         const isItemActive =
           isPathActive(pathname, item.href) ||
           children.some((child) => isPathActive(pathname, child.href));

@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { db } from '@/db';
 import { linkedDevices, users } from '@/db/schema';
 import { logAuditAction } from '@/lib/audit';
-import { isGlobalAdmin } from '@/lib/auth/roles';
+import { canAccessMobile } from '@/lib/auth/roles';
 import { serverEnv } from '@/lib/env';
 import {
   MOBILE_JWT_AUDIENCE,
@@ -110,9 +110,9 @@ export const POST = withRateLimit('mobile-exchange', async (req: Request) => {
     .where(eq(users.id, user.id))
     .limit(1);
 
-  // 6. RBAC: Final backstop — only a GlobalAdmin session may ever receive a mobile JWT.
+  // 6. RBAC: Final backstop — only an asset-management role may receive a mobile JWT.
   // This guards against any token minted before the generate-qr endpoint was hardened.
-  if (!currentUser?.isActive || !isGlobalAdmin(currentUser.role)) {
+  if (!currentUser?.isActive || !canAccessMobile(currentUser.role)) {
     await logAuditAction({
       entityType: 'linked_devices',
       entityId: user.id,
@@ -120,13 +120,14 @@ export const POST = withRateLimit('mobile-exchange', async (req: Request) => {
       performedById: user.id,
       newData: {
         attemptedByRole: currentUser?.role ?? user.role,
-        reason: 'Non-admin user attempted to claim a mobile session token.',
+        reason:
+          'An unauthorized role attempted to claim a mobile session token.',
       },
     });
     return NextResponse.json(
       {
         error:
-          'Forbidden: Only Global Administrators can link a mobile device.',
+          'Forbidden: Only Global Administrators and IT Operators can link a mobile device.',
       },
       { status: 403 }
     );
