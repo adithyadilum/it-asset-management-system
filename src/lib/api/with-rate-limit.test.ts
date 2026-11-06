@@ -101,6 +101,21 @@ describe('withRateLimit', () => {
     expect(handler).toHaveBeenCalled();
   });
 
+  it('propagates request-time rendering signals instead of failing open', async () => {
+    const signal = Object.assign(new Error('Prerender interrupted'), {
+      digest: 'NEXT_PRERENDER_INTERRUPTED',
+    });
+    const request = createRequest();
+    vi.spyOn(request.headers, 'get').mockImplementation(() => {
+      throw signal;
+    });
+    const handler = vi.fn();
+
+    await expect(withRateLimit('test', handler)(request)).rejects.toBe(signal);
+    expect(mockApply).not.toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it('forwards route context to the wrapped handler', async () => {
     mockApply.mockResolvedValue(allowed);
     const handler = vi.fn().mockResolvedValue(NextResponse.json({}));

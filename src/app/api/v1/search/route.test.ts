@@ -11,6 +11,10 @@ import { getToken } from 'next-auth/jwt';
 
 const mockGetAuthenticatedUserFromRequest = vi.hoisted(() => vi.fn());
 
+vi.mock('@/lib/api/with-rate-limit', () => ({
+  withRateLimit: (_bucket: string, handler: unknown) => handler,
+}));
+
 vi.mock('@/db', () => ({
   db: {
     select: vi.fn(),

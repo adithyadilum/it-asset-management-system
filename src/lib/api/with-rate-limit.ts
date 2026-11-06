@@ -41,9 +41,12 @@ export function withRateLimit<TReq extends Request, TArgs extends unknown[]>(
       return handler(req, ...rest);
     }
 
+    // Reading request headers can interrupt prerendering. Let Next.js handle
+    // that signal; only failures from the Redis check should fail open.
+    const key = `${bucket}:${resolveClientIp(req)}`;
     let result;
     try {
-      result = await applyRateLimit(`${bucket}:${resolveClientIp(req)}`);
+      result = await applyRateLimit(key);
     } catch (error) {
       // A limiter outage must not take the application down with it.
       console.error(`[rate-limit] ${bucket} check failed:`, error);

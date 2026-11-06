@@ -10,6 +10,10 @@ import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-us
 import type { AssetDetailsData } from '@/lib/data/asset-details-repo';
 import type { UserRole } from '@/types/auth';
 
+vi.mock('@/lib/api/with-rate-limit', () => ({
+  withRateLimit: (_bucket: string, handler: unknown) => handler,
+}));
+
 vi.mock('@/lib/data/asset-details-repo', () => ({
   getAssetDetailsById: vi.fn(),
 }));
