@@ -4,6 +4,13 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { logAuditAction } from '@/lib/audit';
+
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: vi.fn(),
+}));
 
 vi.hoisted(() => {
   process.env.MOBILE_JWT_SECRET =
@@ -73,6 +80,29 @@ describe('POST /api/auth/mobile-exchange', () => {
     status: 'pending',
   };
 
+  it('returns the token without awaiting a slow audit insert', async () => {
+    mockRedisGetDel.mockResolvedValue(JSON.stringify(mockUser));
+    mockSelectLimit.mockResolvedValue([{ ...mockUser, isActive: true }]);
+    vi.mocked(logAuditAction).mockImplementationOnce(
+      () => new Promise(() => {})
+    );
+    const response = await POST(createRequest({ token: 'a'.repeat(64) }));
+    expect(response.status).toBe(200);
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(logAuditAction).not.toHaveBeenCalled();
+    vi.mocked(logAuditAction).mockReset().mockResolvedValue(undefined);
+  });
+
+  it('returns a safe retry message if the single-use store is unavailable', async () => {
+    mockRedisGetDel.mockRejectedValueOnce(
+      new Error('Private Redis endpoint failed')
+    );
+    const response = await POST(createRequest({ token: 'a'.repeat(64) }));
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('Private Redis');
+    expect(mockInsertValues).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when both token and linkToken are missing', async () => {
     const req = createRequest({
       deviceName: 'iPhone 15 Pro',
@@ -122,11 +152,7 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify Redis calls
     expect(mockRedisGetDel).toHaveBeenCalledWith(`qr_link:${'a'.repeat(64)}`);
-    expect(mockRedisSet).toHaveBeenCalledWith(
-      `qr_claimed:${'a'.repeat(64)}`,
-      '1',
-      { ex: 120 }
-    );
+    expect(mockRedisSet).not.toHaveBeenCalled();
 
     // Verify DB call
     expect(mockInsertValues).toHaveBeenCalledWith(
@@ -164,11 +190,7 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify Redis calls
     expect(mockRedisGetDel).toHaveBeenCalledWith(`qr_link:${'b'.repeat(64)}`);
-    expect(mockRedisSet).toHaveBeenCalledWith(
-      `qr_claimed:${'b'.repeat(64)}`,
-      '1',
-      { ex: 120 }
-    );
+    expect(mockRedisSet).not.toHaveBeenCalled();
 
     // Verify cache revalidation
     expect(revalidatePath).toHaveBeenCalledWith('/settings/devices');

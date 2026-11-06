@@ -41,6 +41,9 @@ vi.mock('next/cache', () => ({
 vi.mock('@/lib/capture-reporting-rate', () => ({
   captureReportingRate: vi.fn().mockResolvedValue('300'),
 }));
+vi.mock('@/lib/api/with-rate-limit', () => ({
+  withRateLimit: (_bucket: string, handler: unknown) => handler,
+}));
 
 describe.skipIf(!state.url)(
   'financial queries on disposable PostgreSQL',
@@ -521,6 +524,33 @@ describe.skipIf(!state.url)(
         .where(eq(schema.assets.id, assetId));
       expect(purchase.estimatedSalvageValue).toBe('125.00');
       expect(asset.salvageValue).toBe('200.00');
+    });
+    it('confirms only recent committed device links without a Redis completion marker', async () => {
+      const { GET } = await import('@/app/api/auth/check-qr-status/route');
+      const { pairingDeviceId } = await import('@/lib/auth/pairing-store');
+      const token = 'a'.repeat(64);
+      const request = () =>
+        new Request(`http://localhost/api/auth/check-qr-status?token=${token}`);
+      expect(await (await GET(request())).json()).toEqual({ claimed: false });
+      const [device] = await db
+        .insert(schema.linkedDevices)
+        .values({
+          userId: state.user.id,
+          deviceName: 'Samsung Galaxy S24',
+          jwtId: pairingDeviceId(token),
+        })
+        .returning();
+      expect(await (await GET(request())).json()).toEqual({ claimed: true });
+      await db
+        .update(schema.linkedDevices)
+        .set({ isRevoked: true })
+        .where(eq(schema.linkedDevices.id, device.id));
+      expect(await (await GET(request())).json()).toEqual({ claimed: false });
+      await db
+        .update(schema.linkedDevices)
+        .set({ isRevoked: false, linkedAt: new Date(Date.now() - 180_000) })
+        .where(eq(schema.linkedDevices.id, device.id));
+      expect(await (await GET(request())).json()).toEqual({ claimed: false });
     });
     it('serializes mobile issue retries, closes custody, and rejects terminal assets', async () => {
       const { recordMobileIssue } =
