@@ -17,6 +17,7 @@ describe('TCOLedger', () => {
   });
 
   const mockSummary = {
+    incompleteCosts: 0,
     totalPurchase: 1500,
     totalMaintenance: 200,
     totalTCO: 1700,

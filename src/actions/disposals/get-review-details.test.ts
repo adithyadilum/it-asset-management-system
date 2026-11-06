@@ -128,4 +128,26 @@ describe('getDisposalReviewDetails', () => {
       'UNAUTHENTICATED'
     );
   });
+
+  it('returns the model image with the review details', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          disposalId: 1,
+          assetId: VALID_UUID,
+          assetTag: 'AST-1',
+          assetName: 'Laptop',
+          imageUrl: '/models/laptop.png',
+          requestedAt: new Date('2026-11-05T00:00:00Z'),
+          requestedBy: 'Admin',
+          reason: 'Broken',
+          totalCost: '1000',
+        },
+      ])
+    );
+    expect((await getDisposalReviewDetails(1)).imageUrl).toBe(
+      '/models/laptop.png'
+    );
+  });
 });

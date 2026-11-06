@@ -18,6 +18,7 @@ import {
 } from '@/lib/auth/get-authenticated-user';
 import { canManageAssets } from '@/lib/auth/roles';
 import type { UserRole } from '@/types/auth';
+import { ServiceUnavailableError } from '@/lib/service-availability';
 
 vi.mock('@/lib/auth/get-authenticated-user', () => ({
   getAuthenticatedUser: vi.fn(),
@@ -43,6 +44,32 @@ const request = {} as NextRequest;
 
 describe('withAuth', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('reports a temporary auth outage as 503 without clearing the session or running the handler', async () => {
+    mockRequestUser.mockRejectedValueOnce(new ServiceUnavailableError());
+    const handler = vi.fn();
+    const response = await withAuth(allowAnyRole, handler)(request, {});
+    expect(response.status).toBe(503);
+    expect(response.headers.get('retry-after')).toBe('5');
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(handler).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({
+      code: 'SERVICE_UNAVAILABLE',
+    });
+  });
+
+  it('sanitizes connection errors inside handlers without exposing SQL or replaying mutations', async () => {
+    mockRequestUser.mockResolvedValue(asUser('GlobalAdmin'));
+    const handler = vi.fn().mockRejectedValue(
+      new Error('Failed query secret', {
+        cause: new Error('Connection terminated unexpectedly'),
+      })
+    );
+    const response = await withAuth(allowAnyRole, handler)(request, {});
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('secret');
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
 
   it('returns 401 and never runs the handler when unauthenticated', async () => {
     mockRequestUser.mockResolvedValue(null);
@@ -98,6 +125,11 @@ describe('withAuth', () => {
 });
 
 describe('withMobileAuth', () => {
+  it('keeps a paired device authenticated through database outages', async () => {
+    mockMobileUser.mockRejectedValueOnce(new ServiceUnavailableError());
+    const response = await withMobileAuth(allowAnyRole, vi.fn())(request, {});
+    expect(response.status).toBe(503);
+  });
   beforeEach(() => vi.clearAllMocks());
 
   it('rejects a web session principal', async () => {

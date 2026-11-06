@@ -59,8 +59,9 @@ vi.mock('@/db/schema', () => ({
     assignedToUserId: 'assetAssignments.assignedToUserId',
     state: 'assetAssignments.state',
   },
-  assets: { id: 'assets.id' },
+  assets: { id: 'assets.id', locationId: 'assets.locationId' },
   categories: { id: 'categories.id' },
+  locations: { id: 'locations.id', name: 'locations.name' },
   models: { id: 'models.id' },
   notificationQueue: { id: 'notificationQueue.id' },
   users: { id: 'users.id', name: 'users.name' },
@@ -172,17 +173,19 @@ describe('getCurrentEmployeeSoftwareAssets', () => {
     );
 
     const res = await getCurrentEmployeeSoftwareAssets();
+    expect(res[0]).not.toHaveProperty('licenseKey');
     expect(res).toEqual([
       {
         allocationId: 7,
         assetId: 'software-asset-id',
         assetTag: 'SFT-001',
-        licenseKey: 'LIC-123',
         modelName: 'Microsoft 365',
         status: 'active',
         allocatedDate: mockDate.toISOString(),
         licenseType: 'Subscription',
         pillar: 'Software',
+        technicalDetails: null,
+        instanceAttributes: null,
       },
     ]);
   });

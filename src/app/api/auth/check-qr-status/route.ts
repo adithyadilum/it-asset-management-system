@@ -1,12 +1,10 @@
 import { withRateLimit } from '@/lib/api/with-rate-limit';
 import { NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
-import { serverEnv } from '@/lib/env';
-
-const redis = new Redis({
-  url: serverEnv.UPSTASH_REDIS_REST_URL,
-  token: serverEnv.UPSTASH_REDIS_REST_TOKEN,
-});
+import { pairingDeviceId } from '@/lib/auth/pairing-store';
+import { db } from '@/db';
+import { linkedDevices } from '@/db/schema';
+import { and, eq, gte } from 'drizzle-orm';
+import { readDatabase } from '@/lib/database-recovery';
 
 export const GET = withRateLimit('qr-status', async (req: Request) => {
   const { searchParams } = new URL(req.url);
@@ -16,10 +14,33 @@ export const GET = withRateLimit('qr-status', async (req: Request) => {
     return NextResponse.json({ claimed: false }, { status: 400 });
   }
 
-  // Check for the explicit "claimed" marker set by the mobile-exchange endpoint.
-  // This avoids the false-positive bug where an expired token (key deleted by TTL)
-  // was indistinguishable from a claimed token (key deleted by exchange).
-  const claimed = await redis.exists(`qr_claimed:${token}`);
-
-  return NextResponse.json({ claimed: claimed === 1 });
+  // Only a recently committed, active device confirms pairing. Token expiry or
+  // consumption alone never counts as success, and a delayed audit cannot block it.
+  try {
+    const [device] = await readDatabase(() =>
+      db
+        .select({ id: linkedDevices.id })
+        .from(linkedDevices)
+        .where(
+          and(
+            eq(linkedDevices.jwtId, pairingDeviceId(token)),
+            eq(linkedDevices.isRevoked, false),
+            gte(linkedDevices.linkedAt, new Date(Date.now() - 120_000))
+          )
+        )
+        .limit(1)
+    );
+    return NextResponse.json(
+      { claimed: Boolean(device) },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  } catch {
+    return NextResponse.json(
+      { error: 'Pairing confirmation is temporarily unavailable.' },
+      {
+        status: 503,
+        headers: { 'Retry-After': '5', 'Cache-Control': 'no-store' },
+      }
+    );
+  }
 });

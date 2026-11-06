@@ -13,5 +13,8 @@ import { canAccessMobile } from '@/lib/auth/roles';
 export const GET = withMobileAuth(canAccessMobile, async (_req, { user }) => {
   const { id, name, email, role } = user;
 
-  return NextResponse.json({ data: { id, name, email, role } });
+  return NextResponse.json(
+    { data: { id, name, email, role } },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 });

@@ -6,6 +6,12 @@ import { eq, and } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { TtlCache } from '@/lib/ttl-cache';
 import type { AuthenticatedUser } from '@/actions/auth';
+import {
+  readDatabase,
+  isServiceUnavailable,
+  warnDatabaseUnavailable,
+} from '@/lib/database-recovery';
+import { ServiceUnavailableError } from '@/lib/service-availability';
 
 export { getAuthenticatedUser };
 export { canManageAssets } from '@/lib/auth/roles';
@@ -37,7 +43,8 @@ function recordDeviceActivity(deviceId: string): void {
       .set({ lastActiveAt: new Date() })
       .where(eq(linkedDevices.id, deviceId))
   ).catch((error) => {
-    console.error('[auth] Failed to record device activity:', error);
+    if (isServiceUnavailable(error)) warnDatabaseUnavailable(error);
+    else console.error('[auth] Failed to record device activity');
   });
 }
 
@@ -65,36 +72,41 @@ export async function getAuthenticatedMobileUserFromRequest(
     const jwtId = typeof payload.jti === 'string' ? payload.jti : '';
     if (!userId || !jwtId) return null;
 
-    const [device] = await db
-      .select({ id: linkedDevices.id, userId: linkedDevices.userId })
-      .from(linkedDevices)
-      .where(
-        and(
-          eq(linkedDevices.jwtId, jwtId),
-          eq(linkedDevices.userId, userId),
-          eq(linkedDevices.isRevoked, false)
+    const [device] = await readDatabase(() =>
+      db
+        .select({ id: linkedDevices.id, userId: linkedDevices.userId })
+        .from(linkedDevices)
+        .where(
+          and(
+            eq(linkedDevices.jwtId, jwtId),
+            eq(linkedDevices.userId, userId),
+            eq(linkedDevices.isRevoked, false)
+          )
         )
-      )
-      .limit(1);
+        .limit(1)
+    );
     if (!device) return null;
 
-    const [user] = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        role: users.role,
-        isActive: users.isActive,
-      })
-      .from(users)
-      .where(and(eq(users.id, userId), eq(users.isActive, true)))
-      .limit(1);
+    const [user] = await readDatabase(() =>
+      db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          isActive: users.isActive,
+        })
+        .from(users)
+        .where(and(eq(users.id, userId), eq(users.isActive, true)))
+        .limit(1)
+    );
     if (!user) return null;
 
     recordDeviceActivity(device.id);
 
     return { ...user, deviceId: device.id, jwtId };
-  } catch {
+  } catch (error) {
+    if (isServiceUnavailable(error)) throw new ServiceUnavailableError();
     return null;
   }
 }

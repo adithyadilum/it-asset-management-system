@@ -29,6 +29,20 @@
       "when": 1788128204143,
       "tag": "0003_asset_estimated_salvage_value",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793888128395,
+      "tag": "0004_financial_input_consistency",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793888350819,
+      "tag": "0005_per_head_financial_history",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,7 @@ export interface AssetDetailsData {
     serialNumber: string | null;
     name: string | null;
     status: string;
+    isArchived?: boolean;
     condition: string | null;
     instanceAttributes: Record<string, unknown> | null;
     usefulLifeMonths: number | null;
@@ -335,6 +336,7 @@ export async function getAssetDetailsByResolvedId(
       serialNumber: assetRecord.serialNumber,
       name: assetRecord.name,
       status: assetRecord.status,
+      isArchived: assetRecord.isArchived,
       condition: assetRecord.condition,
       instanceAttributes: assetRecord.instanceAttributes as Record<
         string,

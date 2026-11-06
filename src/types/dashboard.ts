@@ -87,8 +87,8 @@ export interface SoftwareOptimizationRow {
   totalSeats: number;
   assignedSeats: number;
   idleSeats: number;
-  costPerSeat: number;
-  monthlyLeak: number;
+  costPerSeat: number | null;
+  monthlyLeak: number | null;
   currencyCode?: string;
 }
 

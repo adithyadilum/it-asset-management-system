@@ -84,4 +84,57 @@ describe('DataTable', () => {
     render(<DataTable columns={columns} data={data} hideFooter={true} />);
     expect(screen.queryByText('Rows per page')).not.toBeInTheDocument();
   });
+
+  it('preserves selected rows across filtered data changes (search)', async () => {
+    const user = userEvent.setup();
+    const onActionClick = vi.fn();
+
+    const { rerender } = render(
+      <DataTable
+        columns={columns}
+        data={data}
+        enableRowSelection={true}
+        selectionActions={[
+          {
+            id: 'bulk-act',
+            label: 'Run Bulk',
+            onClick: onActionClick,
+          },
+        ]}
+      />
+    );
+
+    // Select Item 1
+    const initialCheckboxes = screen.getAllByRole('checkbox');
+    await user.click(initialCheckboxes[1]);
+    expect(screen.getByText('1 row(s) selected')).toBeInTheDocument();
+
+    // Simulate search filtering out Item 1 and showing only Item 2
+    rerender(
+      <DataTable
+        columns={columns}
+        data={[data[1]]}
+        enableRowSelection={true}
+        selectionActions={[
+          {
+            id: 'bulk-act',
+            label: 'Run Bulk',
+            onClick: onActionClick,
+          },
+        ]}
+      />
+    );
+
+    // Selection count should still be 1 even though Item 1 is filtered out
+    expect(screen.getByText('1 row(s) selected')).toBeInTheDocument();
+
+    // Select Item 2 in the filtered results
+    const filteredCheckboxes = screen.getAllByRole('checkbox');
+    await user.click(filteredCheckboxes[1]);
+    expect(screen.getByText('2 row(s) selected')).toBeInTheDocument();
+
+    // Clicking the bulk action passes both Item 1 and Item 2
+    await user.click(screen.getByRole('button', { name: 'Run Bulk' }));
+    expect(onActionClick).toHaveBeenCalledWith([data[0], data[1]]);
+  });
 });

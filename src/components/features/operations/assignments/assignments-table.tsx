@@ -137,7 +137,8 @@ export function AssignmentsTable({
         columns={tableColumns}
         data={rows}
         onRowClick={onRowClick}
-        initialPageSize={10}
+        initialPageSize={16}
+        pageSizeOptions={[16, 24, 32, 48]}
         className="flex-1 min-h-0 rounded-lg border border-border"
         selectionActions={selectionActions}
         selectionLabel={(count) => `${count} Assets Selected`}

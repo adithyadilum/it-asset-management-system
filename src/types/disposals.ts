@@ -6,6 +6,7 @@ export type DisposalReviewDetails = {
   assetTag: string;
   serialNumber: string | null;
   assetName: string | null;
+  imageUrl?: string | null;
   category: string;
   brand: string;
   requestedBy: string;

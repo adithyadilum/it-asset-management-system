@@ -1,4 +1,6 @@
 'use server';
+import { and, isNull } from 'drizzle-orm';
+import { financialMemberships } from '@/db/schema';
 
 import { db } from '@/db';
 import {
@@ -405,6 +407,15 @@ export async function setUserActiveStatus(
       }
 
       if (!isActive) {
+        await tx
+          .update(financialMemberships)
+          .set({ validTo: new Date() })
+          .where(
+            and(
+              eq(financialMemberships.userId, targetUserId),
+              isNull(financialMemberships.validTo)
+            )
+          );
         await Promise.all([
           tx
             .delete(userRefreshTokens)

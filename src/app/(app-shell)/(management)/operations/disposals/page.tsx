@@ -58,10 +58,10 @@ async function DisposalsPageContent({ searchParams }: DisposalsPageProps) {
   const pageSize =
     typeof resolvedSearchParams?.pageSize === 'string'
       ? parseInt(resolvedSearchParams.pageSize, 10)
-      : 10;
+      : 16;
 
   const validPage = isNaN(page) || page < 1 ? 1 : page;
-  const validPageSize = isNaN(pageSize) || pageSize < 1 ? 10 : pageSize;
+  const validPageSize = isNaN(pageSize) || pageSize < 1 ? 16 : pageSize;
 
   // 1. Fetch pending requests
   const pendingDataPromise = db

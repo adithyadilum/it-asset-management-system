@@ -4,6 +4,13 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { logAuditAction } from '@/lib/audit';
+
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: vi.fn(),
+}));
 
 vi.hoisted(() => {
   process.env.MOBILE_JWT_SECRET =
@@ -65,13 +72,36 @@ describe('POST /api/auth/mobile-exchange', () => {
     vi.clearAllMocks();
   });
 
-  // NOTE: role must be 'GlobalAdmin' — non-admin tokens are rejected by the RBAC backstop.
+  // Fixture uses GlobalAdmin; the RBAC backstop also permits IT operators.
   const mockUser = {
     id: '11111111-1111-4111-8111-111111111111',
     role: 'GlobalAdmin',
     email: 'admin@tiqri.com',
     status: 'pending',
   };
+
+  it('returns the token without awaiting a slow audit insert', async () => {
+    mockRedisGetDel.mockResolvedValue(JSON.stringify(mockUser));
+    mockSelectLimit.mockResolvedValue([{ ...mockUser, isActive: true }]);
+    vi.mocked(logAuditAction).mockImplementationOnce(
+      () => new Promise(() => {})
+    );
+    const response = await POST(createRequest({ token: 'a'.repeat(64) }));
+    expect(response.status).toBe(200);
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(logAuditAction).not.toHaveBeenCalled();
+    vi.mocked(logAuditAction).mockReset().mockResolvedValue(undefined);
+  });
+
+  it('returns a safe retry message if the single-use store is unavailable', async () => {
+    mockRedisGetDel.mockRejectedValueOnce(
+      new Error('Private Redis endpoint failed')
+    );
+    const response = await POST(createRequest({ token: 'a'.repeat(64) }));
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('Private Redis');
+    expect(mockInsertValues).not.toHaveBeenCalled();
+  });
 
   it('returns 400 when both token and linkToken are missing', async () => {
     const req = createRequest({
@@ -122,11 +152,7 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify Redis calls
     expect(mockRedisGetDel).toHaveBeenCalledWith(`qr_link:${'a'.repeat(64)}`);
-    expect(mockRedisSet).toHaveBeenCalledWith(
-      `qr_claimed:${'a'.repeat(64)}`,
-      '1',
-      { ex: 120 }
-    );
+    expect(mockRedisSet).not.toHaveBeenCalled();
 
     // Verify DB call
     expect(mockInsertValues).toHaveBeenCalledWith(
@@ -164,11 +190,7 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify Redis calls
     expect(mockRedisGetDel).toHaveBeenCalledWith(`qr_link:${'b'.repeat(64)}`);
-    expect(mockRedisSet).toHaveBeenCalledWith(
-      `qr_claimed:${'b'.repeat(64)}`,
-      '1',
-      { ex: 120 }
-    );
+    expect(mockRedisSet).not.toHaveBeenCalled();
 
     // Verify cache revalidation
     expect(revalidatePath).toHaveBeenCalledWith('/settings/devices');
@@ -209,7 +231,7 @@ describe('POST /api/auth/mobile-exchange — RBAC backstop', () => {
     expect(mockInsertValues).not.toHaveBeenCalled();
   });
 
-  it('returns 403 when the QR token was minted by an ITOperator', async () => {
+  it('returns a mobile session when the QR token was minted by an ITOperator', async () => {
     const operator = {
       id: '33333333-3333-4333-8333-333333333333',
       role: 'ITOperator',
@@ -227,11 +249,11 @@ describe('POST /api/auth/mobile-exchange — RBAC backstop', () => {
     });
 
     const response = await POST(req);
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.error).toMatch(/Forbidden/i);
+    expect(body.accessToken).toEqual(expect.any(String));
 
-    // Ensure no device was persisted in the database
-    expect(mockInsertValues).not.toHaveBeenCalled();
+    // The operator receives a device-scoped session.
+    expect(mockInsertValues).toHaveBeenCalled();
   });
 });

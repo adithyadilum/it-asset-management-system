@@ -10,6 +10,29 @@ import type {
   AuthenticatedUser,
 } from '@/lib/auth/get-authenticated-user';
 import type { UserRole } from '@/types/auth';
+import {
+  isServiceUnavailable,
+  warnDatabaseUnavailable,
+} from '@/lib/database-recovery';
+import { SERVICE_UNAVAILABLE_MESSAGE } from '@/lib/service-availability';
+
+async function withAvailability(
+  run: () => Promise<Response>
+): Promise<Response> {
+  try {
+    return await run();
+  } catch (error) {
+    if (!isServiceUnavailable(error)) throw error;
+    warnDatabaseUnavailable(error);
+    return NextResponse.json(
+      { error: SERVICE_UNAVAILABLE_MESSAGE, code: 'SERVICE_UNAVAILABLE' },
+      {
+        status: 503,
+        headers: { 'Retry-After': '5', 'Cache-Control': 'no-store' },
+      }
+    );
+  }
+}
 
 export type RolePredicate = (role: UserRole) => boolean;
 
@@ -46,10 +69,12 @@ export function withAuth<TCtx = unknown>(
   ) => Promise<Response>
 ) {
   return async (req: NextRequest, ctx: TCtx): Promise<Response> => {
-    const user = await getAuthenticatedUserFromRequest(req);
-    if (!user) return unauthorized();
-    if (!predicate(user.role)) return forbidden();
-    return handler(req, withUser(ctx, user));
+    return withAvailability(async () => {
+      const user = await getAuthenticatedUserFromRequest(req);
+      if (!user) return unauthorized();
+      if (!predicate(user.role)) return forbidden();
+      return handler(req, withUser(ctx, user));
+    });
   };
 }
 
@@ -65,10 +90,12 @@ export function withMobileAuth<TCtx = unknown>(
   ) => Promise<Response>
 ) {
   return async (req: NextRequest, ctx: TCtx): Promise<Response> => {
-    const user = await getAuthenticatedMobileUserFromRequest(req);
-    if (!user) return unauthorized();
-    if (!predicate(user.role)) return forbidden();
-    return handler(req, withUser(ctx, user));
+    return withAvailability(async () => {
+      const user = await getAuthenticatedMobileUserFromRequest(req);
+      if (!user) return unauthorized();
+      if (!predicate(user.role)) return forbidden();
+      return handler(req, withUser(ctx, user));
+    });
   };
 }
 
@@ -84,9 +111,11 @@ export function withSessionAuth<TCtx = unknown>(
   ) => Promise<Response>
 ) {
   return async (req: NextRequest, ctx: TCtx): Promise<Response> => {
-    const user = await getAuthenticatedUser();
-    if (!user) return unauthorized();
-    if (!predicate(user.role)) return forbidden();
-    return handler(req, withUser(ctx, user));
+    return withAvailability(async () => {
+      const user = await getAuthenticatedUser();
+      if (!user) return unauthorized();
+      if (!predicate(user.role)) return forbidden();
+      return handler(req, withUser(ctx, user));
+    });
   };
 }

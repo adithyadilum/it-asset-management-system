@@ -42,7 +42,7 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     allCategoryLabel: 'All Hardware',
     defaultCategoryLabel: 'All Hardware',
     defaultPageSize: 16,
-    rowsPerPageOptions: [3, 9, 16, 24],
+    rowsPerPageOptions: [16, 24, 32, 48],
     filterFieldOptions: [
       { value: 'Status', label: 'Status' },
       { value: 'Condition', label: 'Condition' },
@@ -63,7 +63,7 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     allCategoryLabel: 'All Software',
     defaultCategoryLabel: 'All Software',
     defaultPageSize: 16,
-    rowsPerPageOptions: [9, 16, 24],
+    rowsPerPageOptions: [16, 24, 32, 48],
     filterFieldOptions: [
       { value: 'Status', label: 'Status' },
       { value: 'Category', label: 'Category' },
@@ -84,7 +84,7 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     allCategoryLabel: 'All Furniture',
     defaultCategoryLabel: 'All Furniture',
     defaultPageSize: 16,
-    rowsPerPageOptions: [9, 16, 24],
+    rowsPerPageOptions: [16, 24, 32, 48],
     filterFieldOptions: [
       { value: 'Status', label: 'Status' },
       { value: 'Condition', label: 'Condition' },
@@ -103,8 +103,8 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     showAllCategoryOption: true,
     allCategoryLabel: 'All Electronics',
     defaultCategoryLabel: 'All Electronics',
-    defaultPageSize: 9,
-    rowsPerPageOptions: [9, 16, 24],
+    defaultPageSize: 16,
+    rowsPerPageOptions: [16, 24, 32, 48],
     filterFieldOptions: [
       { value: 'Status', label: 'Status' },
       { value: 'Condition', label: 'Condition' },
@@ -124,7 +124,7 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     allCategoryLabel: 'All Assets',
     defaultCategoryLabel: 'All Assets',
     defaultPageSize: 16,
-    rowsPerPageOptions: [9, 16, 24, 48],
+    rowsPerPageOptions: [16, 24, 32, 48],
     filterFieldOptions: [
       { value: 'Status', label: 'Status' },
       { value: 'Pillar', label: 'Pillar' },

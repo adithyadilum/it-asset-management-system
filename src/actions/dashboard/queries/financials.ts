@@ -14,26 +14,34 @@ import {
   assetPurchases,
   locations,
   models,
+  categories,
   softwareLicenses,
   softwareAllocations,
+  softwareFinancialTerms,
 } from '@/db/schema';
 import type {
   TopHighValueAssetRow,
   SoftwareOptimizationRow,
 } from '@/types/dashboard';
+import { recordedMoneySql } from '@/lib/recorded-money';
+import { softwareMonthlySeatCost } from '@/lib/software-monthly-cost';
 import { straightLineNbvSqlFragment } from '@/lib/depreciation';
 
 export async function getDashboardTopHighValueAssetsInternal(): Promise<
   TopHighValueAssetRow[]
 > {
+  const fx =
+    "CASE WHEN asset_purchases.currency_code = 'LKR' THEN 1 WHEN asset_purchases.exchange_rate > 0 AND asset_purchases.exchange_rate <> 1 THEN asset_purchases.exchange_rate ELSE NULL END";
   const bookValueSql = sql<number>`
     ${sql.raw(
       straightLineNbvSqlFragment(
-        'asset_purchases.total_cost',
-        '1', // no exchange rate needed for the row output (it gets handled per row)
-        'assets.salvage_value',
+        `asset_purchases.total_cost * (${fx})`,
+        '1',
+        `assets.salvage_value * (${fx})`,
         'assets.useful_life_months',
-        'asset_purchases.purchase_date'
+        'asset_purchases.purchase_date',
+        undefined,
+        'categories.pillar'
       )
     )}
   `;
@@ -44,12 +52,17 @@ export async function getDashboardTopHighValueAssetsInternal(): Promise<
       assetTag: assets.assetTag,
       assetName: models.name,
       locationName: locations.name,
-      totalCost: assetPurchases.totalCost,
+      totalCost: recordedMoneySql(
+        assetPurchases.totalCost,
+        assetPurchases.currencyCode,
+        assetPurchases.exchangeRate
+      ),
       currencyCode: assetPurchases.currencyCode,
       bookValue: bookValueSql,
     })
     .from(assets)
     .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(categories, eq(categories.id, models.categoryId))
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
     .where(
@@ -69,7 +82,7 @@ export async function getDashboardTopHighValueAssetsInternal(): Promise<
       location: r.locationName || 'Unassigned',
       originalCost: cost > 0 ? cost : null,
       currentBookValue: bValue > 0 ? bValue : null,
-      currencyCode: r.currencyCode || 'USD',
+      currencyCode: 'LKR',
     };
   });
 }
@@ -99,38 +112,27 @@ export async function getDashboardSoftwareOptimizationInternal(): Promise<
 
   const allocMap = new Map(allocations.map((a) => [a.licenseId, a.count]));
 
-  const softwareAssetIds = licenses
-    .map((l) => l.assetId)
-    .filter(Boolean) as string[];
-  let softwarePurchasesMap = new Map<string, number>();
-
-  if (softwareAssetIds.length > 0) {
-    const purchases = await db
-      .select({
-        assetId: assetPurchases.assetId,
-        totalCost: assetPurchases.totalCost,
-      })
-      .from(assetPurchases)
-      .where(inArray(assetPurchases.assetId, softwareAssetIds));
-
-    softwarePurchasesMap = new Map(
-      purchases.map((p) => [
-        p.assetId,
-        parseFloat(p.totalCost?.toString() || '0'),
-      ])
-    );
-  }
+  const terms = licenses.length
+    ? await db
+        .select()
+        .from(softwareFinancialTerms)
+        .where(
+          inArray(
+            softwareFinancialTerms.licenseId,
+            licenses.map((l) => l.id)
+          )
+        )
+    : [];
+  const asOf = new Date();
 
   return licenses.map((lic) => {
     const assigned = allocMap.get(lic.id) || 0;
     const idle = Math.max(0, lic.totalSeats - assigned);
-    const licenseCost = lic.assetId
-      ? softwarePurchasesMap.get(lic.assetId) || 0
-      : 0;
-    const computedCostPerSeat =
-      lic.totalSeats > 0 ? licenseCost / lic.totalSeats : 0;
-    const costPerSeat = computedCostPerSeat > 0 ? computedCostPerSeat : 10;
-    const monthlyLeak = idle * costPerSeat;
+    const costPerSeat = softwareMonthlySeatCost(
+      terms.filter((t) => t.licenseId === lic.id),
+      asOf
+    );
+    const monthlyLeak = costPerSeat == null ? null : idle * costPerSeat;
 
     return {
       id: lic.id,
@@ -140,7 +142,7 @@ export async function getDashboardSoftwareOptimizationInternal(): Promise<
       idleSeats: idle,
       costPerSeat,
       monthlyLeak,
-      currencyCode: 'USD',
+      currencyCode: 'LKR',
     };
   });
 }

@@ -15,6 +15,7 @@ import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
 import { enforceActionAccess } from '@/actions/auth';
 import { convertCurrencyAmount, SUMMARY_CURRENCY } from '@/lib/currency';
+import { recordedMoney, recordedMoneySql } from '@/lib/recorded-money';
 import {
   DEFAULT_USEFUL_LIFE_MONTHS,
   calculateCurrentBookValue,
@@ -80,9 +81,7 @@ export async function getDepreciationLedger(
       // Software assets are not depreciable; exclude them unless the caller
       // explicitly filters for the Software pillar (contradictory predicates
       // would always produce zero rows).
-      ...(pillar && pillar !== 'All' && pillar === 'Software'
-        ? []
-        : [ne(categories.pillar, 'Software')]),
+      ne(categories.pillar, 'Software'),
     ];
 
     if (search) {
@@ -137,13 +136,20 @@ export async function getDepreciationLedger(
         purchaseDate: assetPurchases.purchaseDate,
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
+        exchangeRate: assetPurchases.exchangeRate,
         usefulLifeMonths: assets.usefulLifeMonths,
         salvageValue: assets.salvageValue,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(
+        assetPurchases,
+        and(
+          eq(assets.id, assetPurchases.assetId),
+          sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+        )
+      )
       .where(whereClause)
       .orderBy(desc(assetPurchases.purchaseDate))
       .limit(validPageSize)
@@ -156,7 +162,13 @@ export async function getDepreciationLedger(
         .from(assets)
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .innerJoin(
+          assetPurchases,
+          and(
+            eq(assets.id, assetPurchases.assetId),
+            sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+          )
+        )
         .where(whereClause);
       totalRows = totalCountRes[0]?.value ?? 0;
     }
@@ -200,6 +212,7 @@ export async function getDepreciationLedger(
       .select({
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
+        exchangeRate: assetPurchases.exchangeRate,
         salvageValue: assets.salvageValue,
         usefulLifeMonths: assets.usefulLifeMonths,
         purchaseDate: assetPurchases.purchaseDate,
@@ -207,23 +220,29 @@ export async function getDepreciationLedger(
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(
+        assetPurchases,
+        and(
+          eq(assets.id, assetPurchases.assetId),
+          sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+        )
+      )
       .where(whereClause);
 
     // Every total below is normalised to LKR before being added up. Assets are
     // purchased in three currencies and the rows carry their native one, so
     // summing them raw would produce a number in no currency at all.
-    const toLkr = (value: unknown, from: string | null) =>
-      convertCurrencyAmount(
-        parseFloat(value?.toString() || '0'),
-        from || 'LKR',
-        SUMMARY_CURRENCY
-      );
+    const toLkr = (value: unknown, from: string | null, rate: unknown) =>
+      recordedMoney(value, from, rate) ?? 0;
 
     const bookValueSeries = projectBookValueSeries(
       summaryRows.map((row) => ({
-        cost: toLkr(row.originalPrice, row.currencyCode),
-        salvageValue: toLkr(row.salvageValue, row.currencyCode),
+        cost: toLkr(row.originalPrice, row.currencyCode, row.exchangeRate),
+        salvageValue: toLkr(
+          row.salvageValue,
+          row.currencyCode,
+          row.exchangeRate
+        ),
         usefulLifeMonths: row.usefulLifeMonths,
         purchaseDate: row.purchaseDate,
       }))
@@ -234,8 +253,21 @@ export async function getDepreciationLedger(
     let fullyDepreciated = 0;
 
     for (const row of summaryRows) {
-      const price = toLkr(row.originalPrice, row.currencyCode);
-      const salvage = toLkr(row.salvageValue, row.currencyCode);
+      if (
+        recordedMoney(row.originalPrice, row.currencyCode, row.exchangeRate) ==
+        null
+      )
+        continue;
+      const price = toLkr(
+        row.originalPrice,
+        row.currencyCode,
+        row.exchangeRate
+      );
+      const salvage = toLkr(
+        row.salvageValue,
+        row.currencyCode,
+        row.exchangeRate
+      );
       const bookValue = calculateCurrentBookValue({
         cost: price,
         salvageValue: salvage,
@@ -253,6 +285,14 @@ export async function getDepreciationLedger(
     return {
       data: ledgers,
       summary: {
+        incompleteCosts: summaryRows.filter(
+          (row) =>
+            recordedMoney(
+              row.originalPrice,
+              row.currencyCode,
+              row.exchangeRate
+            ) == null
+        ).length,
         bookValueSeries,
         totalCost: Math.round(totalCost * 100) / 100,
         totalBookValue: Math.round(totalBookValue * 100) / 100,
@@ -320,8 +360,12 @@ export async function getTCOLedger(
         .select({
           assetId: maintenanceTickets.assetId,
           totalRepair:
-            sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+            sql<number>`COALESCE(SUM(${recordedMoneySql(maintenanceTickets.actualCost, maintenanceTickets.currencyCode, maintenanceTickets.exchangeRate)}), 0)`.as(
               'totalRepair'
+            ),
+          incompleteCosts:
+            sql<number>`COUNT(*) FILTER (WHERE ${recordedMoneySql(maintenanceTickets.actualCost, maintenanceTickets.currencyCode, maintenanceTickets.exchangeRate)} IS NULL)::int`.as(
+              'incompleteCosts'
             ),
         })
         .from(maintenanceTickets)
@@ -358,13 +402,19 @@ export async function getTCOLedger(
     }
 
     if (costFilter && costFilter !== 'All') {
-      const totalTcoSql = sql`COALESCE(${assetPurchases.totalCost}, 0) + COALESCE(${repairCostsSq.totalRepair}, 0)`;
+      const totalTcoSql = sql`COALESCE(${recordedMoneySql(assetPurchases.totalCost, assetPurchases.currencyCode, assetPurchases.exchangeRate)}, 0) + COALESCE(${repairCostsSq.totalRepair}, 0)`;
       if (costFilter === 'High Value (>$1000)')
-        conditions.push(sql`${totalTcoSql} > 1000`);
+        conditions.push(
+          sql`${totalTcoSql} > ${convertCurrencyAmount(1000, 'USD', SUMMARY_CURRENCY)}`
+        );
       else if (costFilter === 'Medium Value ($500-$1000)')
-        conditions.push(sql`${totalTcoSql} >= 500 AND ${totalTcoSql} <= 1000`);
+        conditions.push(
+          sql`${totalTcoSql} >= ${convertCurrencyAmount(500, 'USD', SUMMARY_CURRENCY)} AND ${totalTcoSql} <= ${convertCurrencyAmount(1000, 'USD', SUMMARY_CURRENCY)}`
+        );
       else if (costFilter === 'Low Value (<$500)')
-        conditions.push(sql`${totalTcoSql} < 500`);
+        conditions.push(
+          sql`${totalTcoSql} < ${convertCurrencyAmount(500, 'USD', SUMMARY_CURRENCY)}`
+        );
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -377,14 +427,26 @@ export async function getTCOLedger(
         assetTag: assets.assetTag,
         categoryName: categories.name,
         purchaseDate: assetPurchases.purchaseDate,
-        originalPrice: assetPurchases.totalCost,
+        originalPrice: recordedMoneySql(
+          assetPurchases.totalCost,
+          assetPurchases.currencyCode,
+          assetPurchases.exchangeRate
+        ),
         currencyCode: assetPurchases.currencyCode,
+        exchangeRate: assetPurchases.exchangeRate,
         totalRepairCosts: repairCostsSq.totalRepair,
+        incompleteCosts: repairCostsSq.incompleteCosts,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(
+        assetPurchases,
+        and(
+          eq(assets.id, assetPurchases.assetId),
+          sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+        )
+      )
       .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
       .where(whereClause)
       .orderBy(desc(assetPurchases.purchaseDate))
@@ -399,7 +461,13 @@ export async function getTCOLedger(
         .from(assets)
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .innerJoin(
+          assetPurchases,
+          and(
+            eq(assets.id, assetPurchases.assetId),
+            sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+          )
+        )
         .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
         .where(whereClause);
       totalRows = totalCountRes[0]?.value ?? 0;
@@ -415,7 +483,10 @@ export async function getTCOLedger(
         category: row.categoryName,
         purchaseDate: row.purchaseDate,
         originalPrice: price,
-        currencyCode: row.currencyCode || 'LKR',
+        currencyCode: SUMMARY_CURRENCY,
+        incompleteCosts:
+          Number(row.incompleteCosts ?? 0) +
+          (row.originalPrice == null ? 1 : 0),
         totalRepairCosts: repairs,
         totalTCO: price + repairs,
       };
@@ -429,16 +500,28 @@ export async function getTCOLedger(
       // references a table the statement never defines.
       .with(repairCostsSq)
       .select({
-        originalPrice: assetPurchases.totalCost,
+        originalPrice: recordedMoneySql(
+          assetPurchases.totalCost,
+          assetPurchases.currencyCode,
+          assetPurchases.exchangeRate
+        ),
         currencyCode: assetPurchases.currencyCode,
+        exchangeRate: assetPurchases.exchangeRate,
         totalRepairCosts: repairCostsSq.totalRepair,
+        incompleteCosts: repairCostsSq.incompleteCosts,
         // Only used to date the trend series below; the totals ignore it.
         purchaseDate: assetPurchases.purchaseDate,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(
+        assetPurchases,
+        and(
+          eq(assets.id, assetPurchases.assetId),
+          sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+        )
+      )
       .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
       .where(whereClause);
 
@@ -451,12 +534,19 @@ export async function getTCOLedger(
         completedAt: maintenanceTickets.actualCompletionDate,
         actualCost: maintenanceTickets.actualCost,
         currencyCode: maintenanceTickets.currencyCode,
+        exchangeRate: maintenanceTickets.exchangeRate,
       })
       .from(maintenanceTickets)
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(
+        assetPurchases,
+        and(
+          eq(assets.id, assetPurchases.assetId),
+          sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+        )
+      )
       .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
       .where(
         whereClause
@@ -469,16 +559,8 @@ export async function getTCOLedger(
     let maintainedCount = 0;
 
     for (const row of summaryRows) {
-      const price = convertCurrencyAmount(
-        parseFloat(row.originalPrice?.toString() || '0'),
-        row.currencyCode || 'LKR',
-        SUMMARY_CURRENCY
-      );
-      const repairs = convertCurrencyAmount(
-        parseFloat(row.totalRepairCosts?.toString() || '0'),
-        row.currencyCode || 'LKR',
-        SUMMARY_CURRENCY
-      );
+      const price = Number(row.originalPrice ?? 0);
+      const repairs = Number(row.totalRepairCosts ?? 0);
       totalPurchase += price;
       totalMaintenance += repairs;
       if (repairs > 0) maintainedCount += 1;
@@ -508,11 +590,7 @@ export async function getTCOLedger(
       addToMonth(
         monthlyPurchase,
         row.purchaseDate,
-        convertCurrencyAmount(
-          parseFloat(row.originalPrice?.toString() || '0'),
-          row.currencyCode || 'LKR',
-          SUMMARY_CURRENCY
-        )
+        Number(row.originalPrice ?? 0)
       );
     }
 
@@ -520,11 +598,7 @@ export async function getTCOLedger(
       addToMonth(
         monthlyMaintenance,
         row.completedAt,
-        convertCurrencyAmount(
-          parseFloat(row.actualCost?.toString() || '0'),
-          row.currencyCode || 'LKR',
-          SUMMARY_CURRENCY
-        )
+        recordedMoney(row.actualCost, row.currencyCode, row.exchangeRate) ?? 0
       );
     }
 
@@ -550,6 +624,13 @@ export async function getTCOLedger(
       data: ledgers,
       trend,
       summary: {
+        incompleteCosts: summaryRows.reduce(
+          (n, row) =>
+            n +
+            Number(row.incompleteCosts ?? 0) +
+            (row.originalPrice == null ? 1 : 0),
+          0
+        ),
         totalPurchase: Math.round(totalPurchase * 100) / 100,
         totalMaintenance: Math.round(totalMaintenance * 100) / 100,
         totalTCO: Math.round((totalPurchase + totalMaintenance) * 100) / 100,
@@ -617,9 +698,7 @@ export async function getWriteOffsLedger(
       // Software assets are excluded from the write-offs ledger; skip the
       // exclusion only if the caller explicitly filters for 'Software' so the
       // two predicates don't cancel each other out.
-      ...(pillar && pillar !== 'All' && pillar === 'Software'
-        ? []
-        : [ne(categories.pillar, 'Software')]),
+      ne(categories.pillar, 'Software'),
     ];
 
     if (search) {
@@ -677,6 +756,7 @@ export async function getWriteOffsLedger(
         disposalDate: assetDisposals.resolvedAt,
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
+        exchangeRate: assetPurchases.exchangeRate,
         bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
         estimatedSalvageValue: assets.salvageValue,
         actualSalvageValue: assetDisposals.actualSalvageValue,
@@ -684,7 +764,13 @@ export async function getWriteOffsLedger(
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
-      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .leftJoin(
+        assetPurchases,
+        and(
+          eq(assets.id, assetPurchases.assetId),
+          sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+        )
+      )
       .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
       .where(whereClause)
       .orderBy(desc(assetDisposals.resolvedAt))
@@ -698,7 +784,13 @@ export async function getWriteOffsLedger(
         .from(assets)
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .leftJoin(
+          assetPurchases,
+          and(
+            eq(assets.id, assetPurchases.assetId),
+            sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+          )
+        )
         .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
         .where(whereClause);
       totalRows = totalCountRes[0]?.value ?? 0;
@@ -724,6 +816,7 @@ export async function getWriteOffsLedger(
       .select({
         bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
         currencyCode: assetPurchases.currencyCode,
+        exchangeRate: assetPurchases.exchangeRate,
         estimatedSalvageValue: assets.salvageValue,
         actualSalvageValue: assetDisposals.actualSalvageValue,
         status: assetDisposals.status,
@@ -731,7 +824,13 @@ export async function getWriteOffsLedger(
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
-      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .leftJoin(
+        assetPurchases,
+        and(
+          eq(assets.id, assetPurchases.assetId),
+          sql`${assetPurchases.id} = (SELECT p.id FROM asset_purchases p WHERE p.asset_id = ${assets.id} ORDER BY p.created_at DESC, p.id DESC LIMIT 1)`
+        )
+      )
       .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
       .where(whereClause);
 
@@ -749,11 +848,7 @@ export async function getWriteOffsLedger(
       // Normalised to one currency before being added up -- assets are bought
       // in three, and the rows carry their native one.
       const toLkr = (value: unknown) =>
-        convertCurrencyAmount(
-          parseFloat(value?.toString() || '0'),
-          row.currencyCode || 'LKR',
-          SUMMARY_CURRENCY
-        );
+        recordedMoney(value, row.currencyCode, row.exchangeRate) ?? 0;
 
       totalWrittenOff += toLkr(row.bookValueAtDisposal);
       totalExpectedSalvage += toLkr(row.estimatedSalvageValue);

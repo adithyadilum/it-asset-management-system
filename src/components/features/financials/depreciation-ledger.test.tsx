@@ -17,6 +17,7 @@ describe('DepreciationLedger', () => {
   });
 
   const mockSummary = {
+    incompleteCosts: 0,
     bookValueSeries: [
       { month: '2026-08', bookValue: 1000 },
       { month: '2026-09', bookValue: 950 },

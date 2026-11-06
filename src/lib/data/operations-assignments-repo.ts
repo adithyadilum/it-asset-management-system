@@ -8,6 +8,7 @@ import {
   isNull,
   max,
   lt,
+  sql,
 } from 'drizzle-orm';
 
 import { alias } from 'drizzle-orm/pg-core';
@@ -644,7 +645,12 @@ export async function getAssignmentsDashboardData(
 
 export async function assignSingleAsset(
   input: AssignAssetInput,
-  assignedById: string
+  assignedById: string,
+  options: {
+    expectedUpdatedAt?: string;
+    requireAvailable?: boolean;
+    afterCommit?: (work: () => Promise<void>) => void;
+  } = {}
 ): Promise<AssignmentMutationResult> {
   const normalizedAssetId = input.assetId.trim();
 
@@ -678,7 +684,20 @@ export async function assignSingleAsset(
       .where(
         and(
           eq(assets.id, normalizedAssetId),
-          inArray(assets.status, ASSIGNABLE_STATUSES)
+          inArray(
+            assets.status,
+            options.requireAvailable ? ['Available'] : ASSIGNABLE_STATUSES
+          ),
+          options.expectedUpdatedAt
+            ? sql`date_trunc('milliseconds', ${assets.updatedAt}) = ${options.expectedUpdatedAt}::timestamp`
+            : undefined,
+          options.requireAvailable ? eq(assets.isArchived, false) : undefined,
+          options.requireAvailable
+            ? sql`not exists (select 1 from ${assetAssignments} where ${assetAssignments.assetId} = ${assets.id} and ${assetAssignments.returnedDate} is null)`
+            : undefined,
+          options.requireAvailable
+            ? sql`exists (select 1 from ${models} join ${categories} on ${categories.id} = ${models.categoryId} where ${models.id} = ${assets.modelId} and ${categories.pillar} <> 'Software' and ${categories.isActive} = true)`
+            : undefined
         )
       )
       .returning({
@@ -751,17 +770,18 @@ export async function assignSingleAsset(
   });
 
   if (target.assignedToUserId) {
-    try {
-      await enqueuePendingAcceptanceNotification(
-        result.assignments[0].assignmentId,
-        target.assignedToUserId
-      );
-    } catch (error) {
-      console.error(
-        'Failed to enqueue pending acceptance notification for assignment:',
-        error
-      );
-    }
+    const notify = async () => {
+      try {
+        await enqueuePendingAcceptanceNotification(
+          result.assignments[0].assignmentId,
+          target.assignedToUserId!
+        );
+      } catch {
+        console.warn('Could not dispatch the pending acceptance notification.');
+      }
+    };
+    if (options.afterCommit) options.afterCommit(notify);
+    else await notify();
   }
 
   return result;
@@ -1253,7 +1273,11 @@ export async function refreshOverdueAssignments(): Promise<void> {
 export async function acceptAssignment(assignmentId: number): Promise<void> {
   const updated = await db
     .update(assetAssignments)
-    .set({ state: 'assigned' })
+    .set({
+      state: 'assigned',
+      acceptanceStatus: 'accepted',
+      acceptedAt: new Date(),
+    })
     .where(
       and(
         eq(assetAssignments.id, assignmentId),
@@ -1401,7 +1425,8 @@ export async function cancelPendingAssignment(
  */
 export async function processAssetReturn(
   input: ProcessReturnPayload,
-  performedById: string
+  performedById: string,
+  options: { expectedUpdatedAt?: string } = {}
 ): Promise<void> {
   const asset = await db
     .select({
@@ -1430,16 +1455,44 @@ export async function processAssetReturn(
         condition: input.physicalCondition,
         updatedAt: new Date(),
       })
-      .where(and(eq(assets.id, input.assetId), eq(assets.status, 'Returned')))
+      .where(
+        and(
+          eq(assets.id, input.assetId),
+          eq(assets.status, 'Returned'),
+          options.expectedUpdatedAt
+            ? sql`date_trunc('milliseconds', ${assets.updatedAt}) = ${options.expectedUpdatedAt}::timestamp`
+            : undefined,
+          options.expectedUpdatedAt ? eq(assets.isArchived, false) : undefined,
+          options.expectedUpdatedAt
+            ? sql`exists (select 1 from ${models} join ${categories} on ${categories.id} = ${models.categoryId} where ${models.id} = ${assets.modelId} and ${categories.pillar} <> 'Software')`
+            : undefined
+        )
+      )
       .returning({ id: assets.id });
 
     if (updated.length === 0) {
+      if (options.expectedUpdatedAt)
+        throw new AssignmentServiceError(
+          'This return has changed. Refresh the asset before continuing.',
+          409,
+          'STALE_ASSET'
+        );
       throw new AssignmentServiceError(
         'Failed to process return. Asset not found or not in Returned status.',
         400,
         'UPDATE_FAILED'
       );
     }
+
+    // Keep the historical custody record consistent with this inspection.
+    await tx
+      .update(assetAssignments)
+      .set({ returnCondition: input.physicalCondition })
+      .where(
+        sql`${assetAssignments.id} = (select latest_return.id from ${assetAssignments} latest_return
+        where latest_return.asset_id = ${input.assetId} and latest_return.returned_date is not null
+        order by latest_return.returned_date desc, latest_return.id desc limit 1)`
+      );
 
     // 2. Create routing tickets if needed
     if (newStatus === 'In Repair') {

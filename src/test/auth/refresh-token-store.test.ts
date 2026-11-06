@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/db';
 import { authOptions } from '@/lib/auth/auth-options';
 import { FATAL_REFRESH_ERROR } from '@/lib/auth/session-liveness';
+import { refreshCoordinator } from '@/lib/auth/refresh-coordinator';
 
 vi.mock('@/lib/audit', () => ({ logAuditAction: vi.fn() }));
 
@@ -65,6 +66,7 @@ describe('refreshAccessToken and the refresh-token store', () => {
     jwt({ token, account: null } as never);
 
   beforeEach(() => {
+    refreshCoordinator.clear();
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.stubGlobal('fetch', fetchMock);

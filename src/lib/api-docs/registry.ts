@@ -6,6 +6,15 @@ import {
 import { z } from 'zod';
 import { omniSearchQuerySchema } from '../validations/omni-search';
 import { updateNotificationRuleSchema } from '../validations/settings';
+import { flagForRepairSchema } from '../validations/maintenance';
+import {
+  mobileHandoverSchema,
+  mobileAssignmentActionSchema,
+  mobileInspectionSchema,
+  mobileRecipientsQuerySchema,
+  mobileTasksQuerySchema,
+} from '../validations/mobile-operations';
+import { inventoryQuerySchema } from '../validations/inventory';
 
 // Apply the OpenAPI extensions to the Zod library
 extendZodWithOpenApi(z);
@@ -191,8 +200,8 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            barcode: z.string().openapi({
-              description: 'The scanned asset tag or serial barcode string',
+            assetTag: z.string().min(1).openapi({
+              description: 'The scanned asset tag or asset detail URL',
             }),
           }),
         },
@@ -207,6 +216,22 @@ registry.registerPath({
           schema: z.object({
             success: z.boolean(),
             message: z.string(),
+            data: z
+              .object({
+                asset: z
+                  .object({ id: z.string(), assetTag: z.string() })
+                  .passthrough(),
+                model: z
+                  .object({ id: z.number(), name: z.string() })
+                  .passthrough(),
+                purchase: z.record(z.string(), z.unknown()).nullable(),
+                vendor: z.record(z.string(), z.unknown()).nullable(),
+              })
+              .passthrough()
+              .openapi({
+                description:
+                  'Asset detail payload. Purchase, vendor, and licence keys are redacted for IT operators.',
+              }),
           }),
         },
       },
@@ -1150,6 +1175,428 @@ registry.registerPath({
 // ==========================================
 // 4. OpenAPI Specification Exporter
 // ==========================================
+
+const mobileResponses = (schema: z.ZodType) => ({
+  200: { description: 'Success', content: { 'application/json': { schema } } },
+  400: {
+    description: 'Invalid request',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  401: {
+    description: 'Unpaired or expired device',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  403: {
+    description: 'Requires GlobalAdmin or ITOperator',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/assets/my-assets',
+  summary: 'Get equipment and software seats assigned to the paired user',
+  security: [{ MobileBearerAuth: [] }],
+  tags: ['Device Operations'],
+  responses: mobileResponses(
+    z.object({
+      data: z.array(
+        z.object({
+          id: z.string().uuid(),
+          assignmentId: z.number().int(),
+          name: z.string(),
+          tagId: z.string(),
+          status: z.string(),
+          statusLabel: z.string(),
+          state: z.string(),
+          category: z.string().optional(),
+          pillar: z.string().optional(),
+          serialNumber: z.string().optional(),
+          imageUrl: z.string().optional(),
+          assignedDate: z.string().optional(),
+          expectedReturnDate: z.string().optional(),
+          location: z.string().optional(),
+          assignedByName: z.string().optional(),
+          condition: z.string().optional(),
+        })
+      ),
+      software: z.array(
+        z.object({
+          allocationId: z.number().int(),
+          assetId: z.string().uuid().nullable(),
+          tagId: z.string().nullable(),
+          name: z.string(),
+          brand: z.string(),
+          category: z.string(),
+          imageUrl: z.string().nullable(),
+          allocatedDate: z.string(),
+          licenseType: z.string(),
+          expiryDate: z.string().nullable(),
+        })
+      ),
+    })
+  ),
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/assets/assignments/{id}/acknowledge',
+  summary: 'Accept an open assignment owned by the paired user',
+  security: [{ MobileBearerAuth: [] }],
+  tags: ['Device Operations'],
+  request: { params: z.object({ id: z.string().regex(/^[1-9]\d*$/) }) },
+  responses: {
+    ...mobileResponses(z.object({ success: z.boolean() })),
+    409: {
+      description:
+        'Assignment already closed, accepted, or not owned by this user',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/dashboard/stats',
+  summary: 'Get operational dashboard counts',
+  security: [{ MobileBearerAuth: [] }],
+  tags: ['Device Operations'],
+  responses: mobileResponses(
+    z.object({
+      data: z.object({
+        pendingDisposals: z.number(),
+        softwareRenewals: z.number(),
+        overdueReturns: z.number(),
+        warrantyExpiry: z.number(),
+      }),
+    })
+  ),
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/issues',
+  summary: 'Report equipment for repair',
+  description:
+    'Creates an internal maintenance ticket and ends open custody. An identical retry returns the existing open ticket.',
+  security: [{ MobileBearerAuth: [] }, { CookieAuth: [] }],
+  tags: ['Device Operations'],
+  request: {
+    body: { content: { 'application/json': { schema: flagForRepairSchema } } },
+  },
+  responses: {
+    ...mobileResponses(
+      z.object({
+        success: z.boolean(),
+        ticketId: z.number(),
+        message: z.string(),
+      })
+    ),
+    404: {
+      description: 'Asset not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    409: {
+      description: 'Open maintenance ticket or terminal asset',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+// --- Group: Mobile inventory ---
+const InventoryAssetSchema = z.object({
+  id: z.string().uuid(),
+  assetTag: z.string(),
+  name: z.string().nullable(),
+  serialNumber: z.string().nullable(),
+  status: z.string(),
+  condition: z.string().nullable(),
+  model: z.string(),
+  brand: z.string(),
+  imageUrl: z.string().nullable(),
+  category: z.string(),
+  pillar: z.string(),
+  location: z.string().nullable(),
+  assignedTo: z.string().nullable(),
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/inventory',
+  summary: 'Browse and search the asset inventory',
+  description:
+    'Requires registry access. Matches every search term across tag, serial, asset name, brand, model, category and location. Excludes archived assets and inactive categories. Software statuses are calculated from expiry and active seat allocations.',
+  security: [{ MobileBearerAuth: [] }, { CookieAuth: [] }],
+  tags: ['Inventory'],
+  request: { query: inventoryQuerySchema },
+  responses: {
+    200: {
+      description: 'Paginated operational inventory and filter options',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(InventoryAssetSchema),
+            meta: z.object({
+              total: z.number(),
+              page: z.number(),
+              pageSize: z.number(),
+              totalPages: z.number(),
+            }),
+            filters: z.object({
+              categories: z.array(
+                z.object({
+                  id: z.number(),
+                  name: z.string(),
+                  pillar: z.string(),
+                })
+              ),
+              locations: z.array(
+                z.object({ id: z.number(), name: z.string() })
+              ),
+              statuses: z.array(z.string()),
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Invalid filters',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthenticated',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Registry access required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: 'Database temporarily unavailable',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/inventory/{assetId}',
+  summary: 'Get an operational asset profile',
+  description:
+    'Requires registry access. Includes product specifications, custody, warranty, software seat usage, the latest five maintenance tickets and twenty activity events. Excludes prices, invoices, licence keys, internal assignment notes and raw audit values.',
+  security: [{ MobileBearerAuth: [] }, { CookieAuth: [] }],
+  tags: ['Inventory'],
+  request: { params: z.object({ assetId: z.string().uuid() }) },
+  responses: {
+    200: {
+      description: 'Operational asset profile',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              asset: z
+                .object({
+                  id: z.string().uuid(),
+                  assetTag: z.string(),
+                  status: z.string(),
+                })
+                .passthrough(),
+              model: z
+                .object({ id: z.number(), name: z.string() })
+                .passthrough(),
+              specifications: z.record(z.string(), z.unknown()),
+              warrantyExpiry: z.string().nullable(),
+              location: z.record(z.string(), z.unknown()).nullable(),
+              owner: z.record(z.string(), z.unknown()).nullable(),
+              assignment: z.record(z.string(), z.unknown()).nullable(),
+              softwareLicense: z.record(z.string(), z.unknown()).nullable(),
+              history: z.array(z.record(z.string(), z.unknown())),
+              maintenance: z.array(z.record(z.string(), z.unknown())),
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Invalid asset identifier',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthenticated',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Registry access required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Asset not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: 'Database temporarily unavailable',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+// Mobile operations keep user acceptance in My Assets and use the shared custody state machine.
+const MobileOperationResponse = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  assignmentId: z.number().optional(),
+});
+const MobileOperationErrors = {
+  400: {
+    description: 'Invalid input',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  401: {
+    description: 'A paired mobile bearer token is required',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  403: {
+    description: 'IT operator or GlobalAdmin access required',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  409: {
+    description: 'Asset or assignment changed; refresh before retrying',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  503: {
+    description:
+      'Service temporarily unavailable; writes are never automatically retried',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+};
+registry.registerPath({
+  method: 'get',
+  path: '/v1/operations/tasks',
+  summary: 'Get the mobile operational work queue',
+  tags: ['Mobile Operations'],
+  description:
+    'Live prioritized queues for handovers, returns due within seven days, received assets awaiting inspection, maintenance, software renewals, warranties and administrator-only disposal approvals. Dates use Asia/Colombo. Counts cover the full queue; filters and pagination apply to data.',
+  security: [{ MobileBearerAuth: [] }],
+  request: { query: mobileTasksQuerySchema },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Live task rows, per-kind counts, and pagination',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(
+              z
+                .object({
+                  id: z.string(),
+                  kind: z.string(),
+                  assetId: z.string().uuid(),
+                  assetTag: z.string(),
+                  name: z.string(),
+                  detail: z.string(),
+                  dueDate: z.string().nullable(),
+                })
+                .passthrough()
+            ),
+            counts: z.record(z.string(), z.number()),
+            meta: z.object({
+              total: z.number(),
+              page: z.number(),
+              pageSize: z.number(),
+              totalPages: z.number(),
+            }),
+          }),
+        },
+      },
+    },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/operations/recipients',
+  summary: 'Search active handover recipients',
+  tags: ['Mobile Operations'],
+  description:
+    'Returns up to twenty active people or locations. Employee searches require at least two characters.',
+  security: [{ MobileBearerAuth: [] }],
+  request: { query: mobileRecipientsQuerySchema },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Bounded recipient matches',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(
+              z.object({
+                id: z.union([z.string(), z.number()]),
+                name: z.string(),
+                detail: z.string(),
+              })
+            ),
+            hasMore: z.boolean(),
+          }),
+        },
+      },
+    },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/operations/handovers',
+  summary: 'Create a guarded mobile handover',
+  tags: ['Mobile Operations'],
+  description:
+    'Only available, non-archived equipment without open custody is eligible. expectedUpdatedAt comes from the latest asset profile. Employee handovers remain pending acceptance in My Assets; location custody takes effect immediately.',
+  security: [{ MobileBearerAuth: [] }],
+  request: {
+    body: { content: { 'application/json': { schema: mobileHandoverSchema } } },
+  },
+  responses: {
+    ...MobileOperationErrors,
+    201: {
+      description: 'Custody record created',
+      content: { 'application/json': { schema: MobileOperationResponse } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/operations/assignments/{id}',
+  summary: 'Receive equipment, request return, or remind an employee',
+  tags: ['Mobile Operations'],
+  description:
+    'Checks assignment ID, asset revision and current custody under database locks. Receiving ends custody and leaves the asset Returned, pending inspection. Acceptance reminders are persisted in-app and limited to once per five minutes per asset.',
+  security: [{ MobileBearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.coerce.number().int().positive() }),
+    body: {
+      content: { 'application/json': { schema: mobileAssignmentActionSchema } },
+    },
+  },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Operation recorded',
+      content: { 'application/json': { schema: MobileOperationResponse } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/operations/inspections',
+  summary: 'Inspect a received asset',
+  tags: ['Mobile Operations'],
+  description:
+    'Requires a fresh Returned asset revision. Uses the desktop return logic to release equipment, open maintenance, or create a disposal request awaiting approval.',
+  security: [{ MobileBearerAuth: [] }],
+  request: {
+    body: {
+      content: { 'application/json': { schema: mobileInspectionSchema } },
+    },
+  },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Condition check recorded',
+      content: { 'application/json': { schema: MobileOperationResponse } },
+    },
+  },
+});
 
 export function getOpenApiSpec() {
   const generator = new OpenApiGeneratorV3(registry.definitions);

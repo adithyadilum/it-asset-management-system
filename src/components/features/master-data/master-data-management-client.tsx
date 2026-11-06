@@ -1202,7 +1202,7 @@ export function MasterDataManagementClient({
               columns={categoryColumns}
               data={filteredCategories}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('asset-categories')}
               onRowClick={(row) => openRecordPanel('asset-categories', row.id)}
@@ -1222,7 +1222,7 @@ export function MasterDataManagementClient({
               columns={locationColumns}
               data={filteredLocations}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('locations')}
               onRowClick={(row) => openRecordPanel('locations', row.id)}
@@ -1242,7 +1242,7 @@ export function MasterDataManagementClient({
               columns={brandColumns}
               data={filteredBrands}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('brands')}
               onRowClick={(row) => openRecordPanel('brands', row.id)}
@@ -1262,7 +1262,7 @@ export function MasterDataManagementClient({
               columns={deviceModelColumns}
               data={filteredModels}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('device-models')}
               onRowClick={(row) => openRecordPanel('device-models', row.id)}
@@ -1282,7 +1282,7 @@ export function MasterDataManagementClient({
               columns={vendorColumns}
               data={filteredVendors}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('vendors')}
               onRowClick={(row) => openRecordPanel('vendors', row.id)}
@@ -1302,7 +1302,7 @@ export function MasterDataManagementClient({
               columns={ownerColumns}
               data={filteredOwners}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('owners')}
               onRowClick={(row) => openRecordPanel('owners', row.id)}
@@ -1322,7 +1322,7 @@ export function MasterDataManagementClient({
               columns={departmentColumns}
               data={filteredDepartments}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('departments')}
               onRowClick={(row) => openRecordPanel('departments', row.id)}
@@ -1342,7 +1342,7 @@ export function MasterDataManagementClient({
               columns={customStatusColumns}
               data={filteredCustomStatuses}
               initialPageSize={16}
-              pageSizeOptions={[16, 32, 64, 100]}
+              pageSizeOptions={[16, 24, 32, 48]}
               defaultSorting={[{ id: 'id', desc: true }]}
               selectionActions={buildSelectionActions('statuses')}
               onRowClick={(row) => openRecordPanel('statuses', row.id)}

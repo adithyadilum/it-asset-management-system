@@ -42,6 +42,7 @@ export function DisposalReviewPanelWrapper({
       }
 
       setIsLoading(true);
+      setExtendedData(null);
 
       try {
         const data = await getDisposalReviewDetails(row.id);
@@ -103,7 +104,7 @@ export function DisposalReviewPanelWrapper({
         serialNumber={extendedData?.serialNumber ?? '-'}
         category={extendedData?.category ?? '-'}
         brand={extendedData?.brand ?? '-'}
-        imageUrl={undefined}
+        imageUrl={extendedData?.imageUrl ?? undefined}
         requestedBy={row?.flaggedBy ?? ''}
         dateRequested={
           row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''

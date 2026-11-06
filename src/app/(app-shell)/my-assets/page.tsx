@@ -8,16 +8,14 @@ import {
 import { getPortalAlerts } from '@/lib/data/portal-repo';
 import { EmployeeAlerts } from '@/components/features/dashboard/employee/employee-alerts';
 import { EmployeeAssetGrid } from '@/components/features/my-assets/employee-asset-grid';
-import { AssetCard } from '@/components/shared/asset-card';
+import { EmployeeSoftwareGrid } from '@/components/features/my-assets/employee-software-grid';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { AppWindow } from 'lucide-react';
 import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
-import { formatAssetName } from '@/lib/asset-name';
 
 /**
  * No instant shell is possible here: the `(app-shell)` layout above blocks on
@@ -65,26 +63,7 @@ async function MyAssetsPageContent() {
               <h2 className="text-lg font-semibold text-foreground">
                 Software Access
               </h2>
-              <div className="mt-3 grid gap-4 xl:grid-cols-3">
-                {softwareAssets.map((asset) => (
-                  <AssetCard
-                    key={asset.allocationId}
-                    assetType={`${asset.licenseType} Seat`}
-                    name={formatAssetName(asset.brandName, asset.modelName)}
-                    status={asset.status}
-                    icon={<AppWindow className="h-8 w-8" />}
-                    // Software has a publisher logo on its model like anything
-                    // else; only these cards were never given it.
-                    imageUrl={asset.imageUrl}
-                    assetId={asset.assetTag}
-                    assignedDate={new Intl.DateTimeFormat('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    }).format(new Date(asset.allocatedDate))}
-                  />
-                ))}
-              </div>
+              <EmployeeSoftwareGrid assets={softwareAssets} />
             </section>
           ) : null}
         </div>

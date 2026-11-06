@@ -8,6 +8,8 @@ export function NotificationBell() {
     notifications,
     unreadCount,
     isLoading,
+    error,
+    retry,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
@@ -18,6 +20,8 @@ export function NotificationBell() {
       notifications={notifications}
       unreadCount={unreadCount}
       isLoading={isLoading}
+      error={error}
+      onRetry={retry}
       onFetchNotifications={fetchNotifications}
       onMarkAsRead={markAsRead}
       onMarkAllAsRead={markAllAsRead}

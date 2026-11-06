@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { revalidatePath } from 'next/cache';
+vi.mock('@/lib/capture-reporting-rate', () => ({
+  captureReportingRate: vi.fn().mockResolvedValue('1'),
+}));
 import {
   ADMIN_USER,
   EMPLOYEE_USER,

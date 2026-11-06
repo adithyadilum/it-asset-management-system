@@ -1,6 +1,7 @@
 'use server';
 
 import { logInfo } from '@/lib/latency';
+import { employeeAssetSpecs } from '@/lib/employee-asset-specs';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { ZodError } from 'zod';
@@ -12,6 +13,7 @@ import {
   assetAssignments,
   assets,
   categories,
+  locations,
   models,
   notificationQueue,
   softwareAllocations,
@@ -49,13 +51,17 @@ export type EmployeeAssignedAsset = {
   /** Model photo. Falls back to the pillar icon on the card. */
   imageUrl: string | null;
   assignedByName: string | null;
+  condition?: string | null;
+  locationName?: string | null;
+  acceptedAt?: string | null;
+  technicalDetails?: Record<string, unknown> | null;
+  instanceAttributes?: Record<string, unknown> | null;
 };
 
 export type EmployeeSoftwareAsset = {
   allocationId: number;
   assetId: string;
   assetTag: string;
-  licenseKey: string | null;
   modelName: string;
   brandName: string | null;
   categoryName: string;
@@ -65,6 +71,9 @@ export type EmployeeSoftwareAsset = {
   allocatedDate: string;
   licenseType: string;
   pillar: 'Software';
+  expiryDate?: string | null;
+  technicalDetails?: Record<string, unknown> | null;
+  instanceAttributes?: Record<string, unknown> | null;
 };
 
 /**
@@ -97,6 +106,11 @@ export async function getCurrentEmployeeAssets(): Promise<
         expectedReturnDate: assetAssignments.expectedReturnDate,
         imageUrl: models.imageUrl,
         assignedByName: users.name,
+        condition: assets.condition,
+        locationName: locations.name,
+        acceptedAt: assetAssignments.acceptedAt,
+        technicalDetails: models.technicalDetails,
+        instanceAttributes: assets.instanceAttributes,
       })
       .from(assetAssignments)
       .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -104,6 +118,7 @@ export async function getCurrentEmployeeAssets(): Promise<
       .innerJoin(brands, eq(models.brandId, brands.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(users, eq(assetAssignments.assignedById, users.id))
+      .leftJoin(locations, eq(assets.locationId, locations.id))
       .where(
         and(
           eq(assetAssignments.assignedToUserId, currentUser.id),
@@ -130,8 +145,27 @@ export async function getCurrentEmployeeAssets(): Promise<
     startOfToday.setHours(0, 0, 0, 0);
 
     return rows.map((row) => ({
-      ...row,
+      assignmentId: row.assignmentId,
+      assetId: row.assetId,
+      assetTag: row.assetTag,
+      serialNumber: row.serialNumber,
+      modelName: row.modelName,
+      brandName: row.brandName,
+      categoryName: row.categoryName,
+      status: row.status,
+      pillar: row.pillar,
+      assignmentState: row.assignmentState,
+      expectedReturnDate: row.expectedReturnDate,
+      imageUrl: row.imageUrl,
+      assignedByName: row.assignedByName,
+      condition: row.condition,
+      locationName: row.locationName,
       assignedDate: row.assignedDate.toISOString(),
+      acceptedAt: row.acceptedAt
+        ? row.acceptedAt.toISOString()
+        : (row.acceptedAt as null | undefined),
+      technicalDetails: employeeAssetSpecs(row.technicalDetails),
+      instanceAttributes: employeeAssetSpecs(row.instanceAttributes),
       isOverdue: row.expectedReturnDate
         ? new Date(row.expectedReturnDate) < startOfToday
         : false,
@@ -165,13 +199,15 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
         allocationId: softwareAllocations.id,
         assetId: assets.id,
         assetTag: assets.assetTag,
-        licenseKey: softwareLicenses.licenseKey,
         modelName: models.name,
         brandName: brands.name,
         categoryName: categories.name,
         imageUrl: models.imageUrl,
         allocatedDate: softwareAllocations.allocatedAt,
         licenseType: softwareLicenses.licenseType,
+        expiryDate: softwareLicenses.expiryDate,
+        technicalDetails: models.technicalDetails,
+        instanceAttributes: assets.instanceAttributes,
       })
       .from(softwareAllocations)
       .innerJoin(
@@ -201,7 +237,6 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
       allocationId: row.allocationId,
       assetId: row.assetId,
       assetTag: row.assetTag,
-      licenseKey: row.licenseKey,
       modelName: row.modelName,
       brandName: row.brandName,
       categoryName: row.categoryName,
@@ -210,6 +245,9 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
       allocatedDate: row.allocatedDate.toISOString(),
       licenseType: row.licenseType,
       pillar: 'Software',
+      expiryDate: row.expiryDate,
+      technicalDetails: employeeAssetSpecs(row.technicalDetails),
+      instanceAttributes: employeeAssetSpecs(row.instanceAttributes),
     }));
   } catch (error) {
     console.error('getCurrentEmployeeSoftwareAssets failed', {
@@ -356,9 +394,9 @@ export async function rejectAssignmentAction(
         id: assetAssignments.id,
         assetId: assetAssignments.assetId,
         state: assetAssignments.state,
+        notes: assetAssignments.notes,
         assignedToUserId: assetAssignments.assignedToUserId,
         assignedById: assetAssignments.assignedById,
-        notes: assetAssignments.notes,
       })
       .from(assetAssignments)
       .where(eq(assetAssignments.id, assignmentId))

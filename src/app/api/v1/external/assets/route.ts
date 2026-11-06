@@ -1,3 +1,4 @@
+import { recordInitialSoftwareTerm } from '@/lib/data/software-financial-history';
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
@@ -14,7 +15,7 @@ import {
 } from '@/lib/validations/asset-registration';
 import { logAuditAction } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
-import { convertCurrencyAmount } from '@/lib/currency';
+import { rateFromRecordedResponse } from '@/lib/recorded-money';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
 import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 
@@ -151,12 +152,10 @@ export const POST = withApiKey(
 
       // 3. Resolve currency conversion rate
       const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
-      const conversionRate = convertCurrencyAmount(
-        1,
+      const conversionRate = rateFromRecordedResponse(
         input.currencyCode || 'LKR',
-        'LKR',
         apiRates
-      ).toFixed(6);
+      );
 
       // Same default the registration form applies, from the one constant, so
       // an asset created through the API depreciates like any other.
@@ -225,34 +224,59 @@ export const POST = withApiKey(
           : null;
 
         // Insert Purchase record
-        await tx.insert(assetPurchases).values({
-          assetId: insertedAsset.id,
-          vendorId: input.vendorId,
-          purchaseDate: toDateString(purchaseDate),
-          basePrice: basePrice.toFixed(2),
-          tax: tax.toFixed(2),
-          shippingCost: shippingCost.toFixed(2),
-          totalCost: totalCost.toFixed(2),
-          currencyCode: input.currencyCode,
-          exchangeRate: conversionRate,
-          warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
-        });
+        const [purchase] = await tx
+          .insert(assetPurchases)
+          .values({
+            assetId: insertedAsset.id,
+            vendorId: input.vendorId,
+            purchaseDate: toDateString(purchaseDate),
+            basePrice: basePrice.toFixed(2),
+            tax: tax.toFixed(2),
+            shippingCost: shippingCost.toFixed(2),
+            totalCost: totalCost.toFixed(2),
+            currencyCode: input.currencyCode,
+            exchangeRate: conversionRate,
+            warrantyExpiry: warrantyExpiry
+              ? toDateString(warrantyExpiry)
+              : null,
+          })
+          .returning({ id: assetPurchases.id });
 
         // If Software category, insert software licenses
         if (input.pillar === 'Software') {
-          await tx.insert(softwareLicenses).values({
-            modelId: input.modelId,
-            assetId: insertedAsset.id,
-            licenseKey: input.serialNumber || null,
-            licenseType: input.licenseType || 'Subscription',
-            totalSeats: input.totalSeats ?? 1,
-            startDate: input.licenseStartDate
-              ? toDateString(input.licenseStartDate)
-              : null,
-            expiryDate: input.licenseExpiryDate
-              ? toDateString(input.licenseExpiryDate)
-              : null,
-          });
+          const [license] = await tx
+            .insert(softwareLicenses)
+            .values({
+              modelId: input.modelId,
+              assetId: insertedAsset.id,
+              licenseKey: input.serialNumber || null,
+              licenseType: input.licenseType || 'Subscription',
+              totalSeats: input.totalSeats ?? 1,
+              startDate: input.licenseStartDate
+                ? toDateString(input.licenseStartDate)
+                : null,
+              expiryDate: input.licenseExpiryDate
+                ? toDateString(input.licenseExpiryDate)
+                : null,
+            })
+            .returning({ id: softwareLicenses.id });
+          if (purchase && license)
+            await recordInitialSoftwareTerm(tx, {
+              licenseId: license.id,
+              purchaseId: purchase.id,
+              amount: totalCost.toFixed(2),
+              currency: input.currencyCode || 'LKR',
+              exchangeRate: conversionRate,
+              licenseType: input.licenseType || 'Subscription',
+              seats: input.totalSeats ?? 1,
+              startDate: toDateString(
+                input.licenseStartDate ?? input.purchaseDate
+              ),
+              expiryDate: input.licenseExpiryDate
+                ? toDateString(input.licenseExpiryDate)
+                : null,
+              allocationLifeMonths: usefulLifeMonths,
+            });
         }
 
         return insertedAsset;

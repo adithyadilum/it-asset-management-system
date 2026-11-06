@@ -6,6 +6,8 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { serverEnv } from '@/lib/env';
+import { protectNeonConnections } from './neon-recovery';
+import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 
 type AppDatabase = PgDatabase<PgQueryResultHKT, typeof schema>;
 
@@ -49,18 +51,12 @@ function createDatabase(): AppDatabase {
     connectionString: serverEnv.DATABASE_URL,
     max: 10,
     idleTimeoutMillis: IDLE_TIMEOUT_SECONDS * 1000,
-    connectionTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 5_000,
     query_timeout: 30_000,
     application_name: 'eitams',
     // Without this an idle pooled client keeps the event loop alive, so a seed
     // or migration script would sit for the whole idle timeout after finishing.
     allowExitOnIdle: true,
-  });
-
-  // Pool emits idle-client errors asynchronously. Without a listener Node
-  // treats them as uncaught exceptions and can terminate the dev/prod worker.
-  pool.on('error', (error: Error) => {
-    console.error('[DB] Unexpected idle Neon connection error:', error.message);
   });
 
   return drizzleNeon(pool, { schema }) as unknown as AppDatabase;
@@ -70,6 +66,11 @@ const globalForDatabase = globalThis as typeof globalThis & {
   eitamsDb?: AppDatabase;
 };
 const db = globalForDatabase.eitamsDb ?? createDatabase();
+const cachedClient = (db as AppDatabase & { $client?: unknown }).$client;
+if (cachedClient instanceof Pool) {
+  // Install guards even when the database was cached by an older dev module.
+  protectNeonConnections(db as NeonDatabase<typeof schema>, cachedClient);
+}
 if (serverEnv.NODE_ENV !== 'production') globalForDatabase.eitamsDb = db;
 
 export { db };

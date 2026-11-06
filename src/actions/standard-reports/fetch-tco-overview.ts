@@ -7,6 +7,7 @@ import {
   assetPurchases,
   maintenanceTickets,
 } from '@/db/schema';
+import { recordedMoney } from '@/lib/recorded-money';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import {
   DEFAULT_USEFUL_LIFE_MONTHS,
@@ -52,6 +53,9 @@ export async function fetchTcoOverview(
       salvageValue: assets.salvageValue,
       createdAt: assets.createdAt,
       totalCost: assetPurchases.totalCost,
+      currencyCode: assetPurchases.currencyCode,
+      exchangeRate: assetPurchases.exchangeRate,
+      pillar: categories.pillar,
       purchaseDate: assetPurchases.purchaseDate,
     })
     .from(assets)
@@ -91,9 +95,16 @@ export async function fetchTcoOverview(
       .select({
         assetId: maintenanceTickets.assetId,
         actualCost: maintenanceTickets.actualCost,
+        currencyCode: maintenanceTickets.currencyCode,
+        exchangeRate: maintenanceTickets.exchangeRate,
       })
       .from(maintenanceTickets)
-      .where(inArray(maintenanceTickets.assetId, assetIds));
+      .where(
+        and(
+          inArray(maintenanceTickets.assetId, assetIds),
+          eq(maintenanceTickets.status, 'COMPLETED')
+        )
+      );
 
     for (const ticket of mt) {
       const stats = maintenanceStats.get(ticket.assetId) || {
@@ -101,14 +112,25 @@ export async function fetchTcoOverview(
         count: 0,
       };
       stats.count += 1;
-      stats.totalCost += Number(ticket.actualCost || 0);
+      stats.totalCost +=
+        recordedMoney(
+          ticket.actualCost,
+          ticket.currencyCode,
+          ticket.exchangeRate
+        ) ?? 0;
       maintenanceStats.set(ticket.assetId, stats);
     }
   }
 
   const data: ReportPreviewRow[] = rows.map((row) => {
-    const cost = Number(row.totalCost || 0);
-    const salvage = Number(row.salvageValue || 0);
+    const cost =
+      recordedMoney(row.totalCost, row.currencyCode, row.exchangeRate) ?? 0;
+    const salvage =
+      recordedMoney(
+        row.salvageValue ?? '0',
+        row.currencyCode,
+        row.exchangeRate
+      ) ?? 0;
     // Was 36 months and 30.4-day steps here, 60 months and calendar months in
     // lib/depreciation.ts — the same asset reported two different book values
     // depending on which screen you opened.
@@ -119,6 +141,7 @@ export async function fetchTcoOverview(
       salvageValue: salvage,
       usefulLifeMonths: usefulLife,
       purchaseDate: depreciationBasis,
+      pillar: row.pillar,
     });
     const accDep = cost - bookVal;
 
@@ -133,6 +156,7 @@ export async function fetchTcoOverview(
       'Asset Tag': row.assetTag,
       'Asset Name': row.assetName || '-',
       Category: row.category,
+      Currency: 'LKR',
       'Purchase Cost': String(cost.toFixed(2)),
       'Total Maintenance Cost': String(stats.totalCost.toFixed(2)),
       'Maintenance Count': String(stats.count),

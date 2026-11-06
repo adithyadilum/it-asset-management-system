@@ -1,3 +1,4 @@
+import { synchronizeFinancialDepartment } from '@/lib/data/financial-membership-history';
 import { logInfo } from '@/lib/latency';
 import '@/lib/auth/patch-url-parse';
 
@@ -13,6 +14,11 @@ import { users, userRefreshTokens, departments } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
+import { refreshCoordinator } from './refresh-coordinator';
+import {
+  isDatabaseConnectionError,
+  warnDatabaseUnavailable,
+} from '@/lib/database-recovery';
 import {
   FATAL_REFRESH_ERROR,
   isFatalRefreshFailure,
@@ -117,6 +123,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       // This blocks until no other worker holds the lock, serialising all
       // concurrent refresh attempts for this user.
       const lockKey = uuidToLockKey(userId);
+      await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
       await tx.execute(sql`SELECT pg_advisory_xact_lock(${lockKey})`);
 
       // ── 2. Re-read the authoritative state from DB ───────────────────────
@@ -231,7 +238,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       //       refresh cycle (~5 min window) without a DB call on every request.
       let isActive = token.isActive as boolean | undefined;
       try {
-        const freshUser = await db.query.users.findFirst({
+        const freshUser = await tx.query.users.findFirst({
           where: eq(users.id, userId),
           columns: { isActive: true },
         });
@@ -252,7 +259,11 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       };
     });
   } catch (error) {
-    console.error('Error refreshing access token', error);
+    if (isDatabaseConnectionError(error)) warnDatabaseUnavailable(error);
+    else
+      console.warn(
+        '[AUTH] Token refresh failed; session recovery will follow its retry policy.'
+      );
 
     // Only Keycloak rejecting the refresh token ends the session. Anything
     // else is retried after a short pause -- see `session-liveness.ts` for why
@@ -427,20 +438,28 @@ export const authOptions: NextAuthOptions = {
       // JIT Provisioning
       if (!existingUser) {
         try {
-          await db.insert(users).values({
-            email: normalizedEmail,
-            // Fallback to preferred_username if name isn't set in Keycloak/Entra
-            name:
-              profile?.name ||
-              ((profile as Record<string, unknown>)
-                ?.preferred_username as string) ||
-              user?.name ||
-              'New User',
-            // CRITICAL: Always default to the lowest privilege tier
-            role: 'Employee',
-            isActive: true,
-            departmentId: userDepartmentId,
-          });
+          const [provisioned] = await db
+            .insert(users)
+            .values({
+              email: normalizedEmail,
+              // Fallback to preferred_username if name isn't set in Keycloak/Entra
+              name:
+                profile?.name ||
+                ((profile as Record<string, unknown>)
+                  ?.preferred_username as string) ||
+                user?.name ||
+                'New User',
+              // CRITICAL: Always default to the lowest privilege tier
+              role: 'Employee',
+              isActive: true,
+              departmentId: userDepartmentId,
+            })
+            .returning({ id: users.id });
+          if (provisioned && userDepartmentId)
+            await synchronizeFinancialDepartment(
+              provisioned.id,
+              userDepartmentId
+            );
           logInfo(`[AUTH] JIT Provisioned new user: ${normalizedEmail}`);
         } catch (error) {
           console.error('Failed to auto-provision user:', error);
@@ -455,15 +474,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Keep user department in sync
-        if (
-          userDepartmentId &&
-          existingUser.departmentId !== userDepartmentId
-        ) {
+        if (userDepartmentId) {
           try {
-            await db
-              .update(users)
-              .set({ departmentId: userDepartmentId })
-              .where(eq(users.id, existingUser.id));
+            await synchronizeFinancialDepartment(
+              existingUser.id,
+              userDepartmentId
+            );
             logInfo(
               `[AUTH] Synced department for existing user: ${normalizedEmail}`
             );
@@ -551,7 +567,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Access token has expired (or is about to). Refresh it.
-      return refreshAccessToken(token);
+      return refreshCoordinator.run(token, refreshAccessToken);
     },
 
     /**

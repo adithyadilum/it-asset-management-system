@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { financialDate } from '@/lib/validations/per-head-costs';
 
 /**
  * Renewing a licence.
@@ -8,6 +9,19 @@ import { z } from 'zod';
  */
 export const renewSoftwareLicenseSchema = z
   .object({
+    renewalAmount: z
+      .string()
+      .regex(
+        /^\d{1,10}(\.\d{1,2})?$/,
+        'Enter a non-negative amount with at most two decimal places.'
+      )
+      .optional(),
+    renewalCurrency: z.enum(['LKR', 'USD', 'NOK']).default('LKR'),
+    renewalExchangeRate: z
+      .string()
+      .regex(/^\d{1,9}(\.\d{1,6})?$/)
+      .optional(),
+    coverageStart: financialDate.optional(),
     assetId: z.string().uuid('Invalid asset ID format.'),
 
     expiryDate: z.preprocess(

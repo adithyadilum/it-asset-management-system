@@ -15,6 +15,8 @@ interface NotificationDropdownProps {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
+  error?: string | null;
+  onRetry?: () => Promise<void>;
   onFetchNotifications: (limit: number, offset: number) => Promise<void>;
   onMarkAsRead: (id: string) => Promise<void>;
   onMarkAllAsRead: () => Promise<void>;
@@ -24,16 +26,35 @@ export function NotificationDropdown({
   notifications,
   unreadCount,
   isLoading,
+  error,
+  onRetry,
   onFetchNotifications,
   onMarkAsRead,
   onMarkAllAsRead,
 }: NotificationDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const loadError = actionError ?? error;
+
+  const recover = async (operation: () => Promise<void>) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await operation();
+    } catch {
+      setActionError(
+        'Notifications are temporarily unavailable. Please try again.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open && notifications.length === 0) {
-      onFetchNotifications(10, 0);
+      void recover(onRetry ?? (() => onFetchNotifications(10, 0)));
     }
   };
 
@@ -74,6 +95,24 @@ export function NotificationDropdown({
         </div>
 
         {/* Notifications List - Scrollable Container */}
+        {loadError ? (
+          <div
+            role="alert"
+            className="space-y-2 border-b px-4 py-3 text-sm text-muted-foreground"
+          >
+            <p>{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || isLoading}
+              onClick={() =>
+                void recover(onRetry ?? (() => onFetchNotifications(10, 0)))
+              }
+            >
+              {busy ? 'Trying again...' : 'Try again'}
+            </Button>
+          </div>
+        ) : null}
         <div className="max-h-96 overflow-y-auto">
           {isLoading && notifications.length === 0 ? (
             <div className="flex items-center justify-center py-8">
@@ -81,7 +120,7 @@ export function NotificationDropdown({
                 Loading...
               </span>
             </div>
-          ) : notifications.length === 0 ? (
+          ) : notifications.length === 0 && !loadError ? (
             <div className="flex items-center justify-center py-8">
               <span className="font-text-sm-regular text-sm text-muted-foreground">
                 No notifications yet
@@ -92,7 +131,7 @@ export function NotificationDropdown({
               <NotificationItem
                 key={notification.id}
                 notification={notification}
-                onMarkAsRead={onMarkAsRead}
+                onMarkAsRead={(id) => recover(() => onMarkAsRead(id))}
               />
             ))
           )}
@@ -104,7 +143,8 @@ export function NotificationDropdown({
             <Button
               variant="ghost"
               size="sm"
-              onClick={onMarkAllAsRead}
+              disabled={busy}
+              onClick={() => void recover(onMarkAllAsRead)}
               className="w-full font-text-sm-medium text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               Mark all as read

@@ -1,9 +1,16 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql, gt, lt } from 'drizzle-orm';
 import { db } from '@/db';
-import { softwareLicenses, softwareAllocations } from '@/db/schema';
+import {
+  softwareLicenses,
+  softwareAllocations,
+  softwareFinancialTerms,
+} from '@/db/schema';
+import { captureReportingRate } from '@/lib/capture-reporting-rate';
+import { DAY_MS, localDate, reportDate } from '@/lib/reporting-time';
+import { recordedMoney } from '@/lib/recorded-money';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logAuditActionTx } from '@/lib/audit';
@@ -259,12 +266,29 @@ export async function renewSoftwareLicenseAction(
   }
 
   const { assetId, expiryDate, totalSeats } = parsed.data;
+  const renewalCurrency = parsed.data.renewalCurrency;
+  const exchangeRate =
+    renewalCurrency === 'LKR'
+      ? '1'
+      : (parsed.data.renewalExchangeRate ??
+        (await captureReportingRate(renewalCurrency)));
+  if (
+    parsed.data.renewalAmount &&
+    recordedMoney(parsed.data.renewalAmount, renewalCurrency, exchangeRate) ==
+      null
+  )
+    return {
+      success: false,
+      error: 'A verified renewal exchange rate is required.',
+    };
 
   try {
     const result = await db.transaction(async (tx) => {
-      const license = await tx.query.softwareLicenses.findFirst({
-        where: eq(softwareLicenses.assetId, assetId),
-      });
+      const [license] = await tx
+        .select()
+        .from(softwareLicenses)
+        .where(eq(softwareLicenses.assetId, assetId))
+        .for('update');
 
       if (!license) {
         throw new Error('Software license not found for this asset.');
@@ -286,6 +310,44 @@ export async function renewSoftwareLicenseAction(
             `Cannot reduce to ${totalSeats} seats: ${allocated?.count} are currently allocated.`
           );
         }
+      }
+
+      if (expiryDate && license.expiryDate && expiryDate <= license.expiryDate)
+        throw new Error(
+          'The renewal expiry must be later than the current expiry.'
+        );
+      if (expiryDate) {
+        const start = parsed.data.coverageStart
+          ? reportDate(parsed.data.coverageStart)
+          : license.expiryDate && license.expiryDate >= localDate(Date.now())
+            ? reportDate(license.expiryDate) + DAY_MS
+            : reportDate(localDate(Date.now()));
+        const end = reportDate(expiryDate) + DAY_MS;
+        if (end <= start)
+          throw new Error('Renewal coverage must end after it starts.');
+        const overlaps = await tx
+          .select({ id: softwareFinancialTerms.id })
+          .from(softwareFinancialTerms)
+          .where(
+            and(
+              eq(softwareFinancialTerms.licenseId, license.id),
+              lt(softwareFinancialTerms.validFrom, new Date(end)),
+              gt(softwareFinancialTerms.validTo, new Date(start))
+            )
+          );
+        if (overlaps.length)
+          throw new Error(
+            'Paid coverage overlaps an existing term. Correct the financial term before renewing.'
+          );
+        await tx.insert(softwareFinancialTerms).values({
+          licenseId: license.id,
+          amount: parsed.data.renewalAmount ?? null,
+          currencyCode: renewalCurrency,
+          exchangeRate,
+          validFrom: new Date(start),
+          validTo: new Date(end),
+          seats: totalSeats ?? license.totalSeats,
+        });
       }
 
       const [updated] = await tx
@@ -323,6 +385,8 @@ export async function renewSoftwareLicenseAction(
 
     revalidatePath('/assets');
     revalidatePath('/assets/software');
+    revalidatePath('/financials/per-head');
+    revalidateTag('dashboard-kpis', 'max');
 
     return {
       success: true,

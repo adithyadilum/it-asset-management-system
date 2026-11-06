@@ -436,6 +436,7 @@ export const maintenanceTickets = pgTable(
 
     estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
     actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
+    exchangeRate: decimal('exchange_rate', { precision: 15, scale: 6 }),
     // Both costs are in this currency. The repair dialogs offered a currency
     // picker with nowhere to store the answer, so the figure was kept bare and
     // silently read as LKR wherever it was displayed.
@@ -800,6 +801,118 @@ export const softwareAllocations = pgTable(
       table.revokedAt
     ),
   })
+);
+
+// Effective financial history starts at rollout. Custody remains in assignments.
+export const financialGroups = pgTable(
+  'financial_groups',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    departmentId: integer('department_id').references(() => departments.id),
+    locationId: integer('location_id').references(() => locations.id),
+    coverageFrom: timestamp('coverage_from', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique('financial_groups_department_unique').on(table.departmentId),
+    unique('financial_groups_location_unique').on(table.locationId),
+    check(
+      'financial_groups_one_target',
+      sql`(${table.departmentId} IS NOT NULL)::int + (${table.locationId} IS NOT NULL)::int = 1`
+    ),
+  ]
+);
+
+export const financialMemberships = pgTable(
+  'financial_memberships',
+  {
+    id: serial('id').primaryKey(),
+    groupId: integer('group_id')
+      .notNull()
+      .references(() => financialGroups.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    validFrom: timestamp('valid_from', { withTimezone: true }).notNull(),
+    validTo: timestamp('valid_to', { withTimezone: true }),
+    reason: text('reason').notNull(),
+  },
+  (table) => [
+    index('financial_memberships_group_period_idx').on(
+      table.groupId,
+      table.validFrom,
+      table.validTo
+    ),
+    index('financial_memberships_user_idx').on(table.userId),
+    check(
+      'financial_memberships_valid_period',
+      sql`${table.validTo} IS NULL OR ${table.validTo} > ${table.validFrom}`
+    ),
+  ]
+);
+
+export const assetCostPolicies = pgTable(
+  'asset_cost_policies',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id),
+    groupId: integer('group_id')
+      .notNull()
+      .references(() => financialGroups.id),
+    shared: boolean('shared').default(false).notNull(),
+    validFrom: timestamp('valid_from', { withTimezone: true }).notNull(),
+    validTo: timestamp('valid_to', { withTimezone: true }),
+  },
+  (table) => [
+    index('asset_cost_policies_asset_period_idx').on(
+      table.assetId,
+      table.validFrom,
+      table.validTo
+    ),
+    check(
+      'asset_cost_policies_valid_period',
+      sql`${table.validTo} IS NULL OR ${table.validTo} > ${table.validFrom}`
+    ),
+  ]
+);
+
+export const softwareFinancialTerms = pgTable(
+  'software_financial_terms',
+  {
+    id: serial('id').primaryKey(),
+    licenseId: uuid('license_id')
+      .notNull()
+      .references(() => softwareLicenses.id),
+    sourcePurchaseId: integer('source_purchase_id')
+      .unique()
+      .references(() => assetPurchases.id),
+    amount: decimal('amount', { precision: 12, scale: 2 }),
+    currencyCode: varchar('currency_code', { length: 3 }).notNull(),
+    exchangeRate: decimal('exchange_rate', { precision: 15, scale: 6 }),
+    validFrom: timestamp('valid_from', { withTimezone: true }).notNull(),
+    validTo: timestamp('valid_to', { withTimezone: true }).notNull(),
+    seats: integer('seats').notNull(),
+    allocationLifeMonths: integer('allocation_life_months'),
+  },
+  (table) => [
+    index('software_financial_terms_license_period_idx').on(
+      table.licenseId,
+      table.validFrom,
+      table.validTo
+    ),
+    check(
+      'software_financial_terms_valid_period',
+      sql`${table.validTo} > ${table.validFrom}`
+    ),
+    check(
+      'software_financial_terms_valid_cost',
+      sql`(${table.amount} IS NULL OR ${table.amount} >= 0) AND ${table.seats} > 0 AND (${table.allocationLifeMonths} IS NULL OR ${table.allocationLifeMonths} > 0)`
+    ),
+  ]
 );
 
 // -----------------------------------------------------------------------------

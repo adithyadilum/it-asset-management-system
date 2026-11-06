@@ -62,6 +62,7 @@ vi.mock('@/db/schema', () => ({
     assetId: 'assetPurchases.assetId',
   },
   softwareLicenses: { id: 'softwareLicenses.id' },
+  softwareFinancialTerms: { id: 'softwareFinancialTerms.id' },
   models: { id: 'models.id' },
   assetAssignments: {
     assetId: 'assetAssignments.assetId',
@@ -253,7 +254,7 @@ describe('registerAsset', () => {
     );
     expect(result.success).toBe(true);
     expect(result.assetId).toBe('SFW-001');
-    expect(mockDb.insert).toHaveBeenCalledTimes(3); // assets, assetPurchases, softwareLicenses
+    expect(mockDb.insert).toHaveBeenCalledTimes(4); // assets, purchase, licence, financial term
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 

@@ -61,8 +61,8 @@ describe('AssetHistoryTimeline', () => {
 
     render(<AssetHistoryTimeline historyLogs={[financeLog]} />);
     expect(screen.getByText('Base Price:')).toBeInTheDocument();
-    expect(screen.getByText('$1,000.00')).toBeInTheDocument();
-    expect(screen.getByText('$1,500.00')).toBeInTheDocument();
+    expect(screen.getByText(/^(?:US)?\$1,000\.00$/)).toBeInTheDocument();
+    expect(screen.getByText(/^(?:US)?\$1,500\.00$/)).toBeInTheDocument();
   });
 
   it('hides entity label when showEntityLabel is false', () => {

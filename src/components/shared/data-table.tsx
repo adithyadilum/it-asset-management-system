@@ -85,6 +85,7 @@ type DataTableProps<TData, TValue> = {
   // 1. ADDED THESE TWO OPTIONAL PROPS
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  getRowId?: (originalRow: TData, index: number, parent?: Row<TData>) => string;
   pageSizeOptions?: number[];
   initialPageSize?: number;
 
@@ -116,6 +117,7 @@ export function DataTable<TData, TValue>({
   // 2. DESTRUCTURED THEM HERE
   rowSelection: externalRowSelection,
   onRowSelectionChange: externalOnRowSelectionChange,
+  getRowId,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   initialPageSize = DEFAULT_INITIAL_PAGE_SIZE,
   disableSelectionHeader = false,
@@ -188,8 +190,62 @@ export function DataTable<TData, TValue>({
   const pagination = paginationState ?? internalPagination;
   const setPagination = onPaginationChange ?? setInternalPagination;
 
+  const resolveRowId = React.useCallback(
+    (originalRow: TData, index: number, parent?: Row<TData>) => {
+      if (getRowId) {
+        return getRowId(originalRow, index, parent);
+      }
+      const candidateId = (originalRow as { id?: string | number | null })?.id;
+      if (
+        candidateId !== undefined &&
+        candidateId !== null &&
+        String(candidateId) !== ''
+      ) {
+        return String(candidateId);
+      }
+      return String(index);
+    },
+    [getRowId]
+  );
+
+  const [knownRowsById, setKnownRowsById] = React.useState<
+    Record<string, TData>
+  >({});
+
+  const currentRowsById = React.useMemo(() => {
+    const map = new Map<string, TData>();
+    data.forEach((item, index) => {
+      map.set(resolveRowId(item, index), item);
+    });
+    return map;
+  }, [data, resolveRowId]);
+
+  const handleRowSelectionChange = React.useCallback<
+    OnChangeFn<RowSelectionState>
+  >(
+    (updaterOrValue) => {
+      setKnownRowsById((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        currentRowsById.forEach((item, id) => {
+          if (next[id] !== item) {
+            next[id] = item;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+      setRowSelection(updaterOrValue);
+    },
+    [currentRowsById, setRowSelection]
+  );
+
+  const prevSelectionResetSignalRef = React.useRef(selectionResetSignal);
   React.useEffect(() => {
-    setRowSelection({});
+    if (prevSelectionResetSignalRef.current !== selectionResetSignal) {
+      prevSelectionResetSignalRef.current = selectionResetSignal;
+      setRowSelection({});
+    }
   }, [selectionResetSignal, setRowSelection]);
 
   const selectionColumn = React.useMemo<ColumnDef<TData, unknown>>(
@@ -246,6 +302,7 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns: tableColumns,
+    getRowId: resolveRowId,
     state: {
       sorting,
       rowSelection,
@@ -254,7 +311,7 @@ export function DataTable<TData, TValue>({
     manualPagination,
     pageCount,
     onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     onPaginationChange: setPagination,
     enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
@@ -284,11 +341,24 @@ export function DataTable<TData, TValue>({
     [onRowClick]
   );
 
+  const selectedRowIds = React.useMemo(
+    () => Object.keys(rowSelection).filter((id) => Boolean(rowSelection[id])),
+    [rowSelection]
+  );
+
+  const selectedRowData = React.useMemo(() => {
+    const result: TData[] = [];
+    for (const id of selectedRowIds) {
+      const item = currentRowsById.get(id) ?? knownRowsById[id];
+      if (item !== undefined) {
+        result.push(item);
+      }
+    }
+    return result;
+  }, [selectedRowIds, currentRowsById, knownRowsById]);
+
   const totalRows = table.getCoreRowModel().rows.length;
-  const selectedRows = table.getSelectedRowModel().rows.length;
-  const selectedRowData = table
-    .getSelectedRowModel()
-    .rows.map((row) => row.original);
+  const selectedRows = selectedRowData.length;
   const actionHeaderLabel = selectionLabel
     ? selectionLabel(selectedRows)
     : `${selectedRows} row(s) selected`;
@@ -345,14 +415,16 @@ export function DataTable<TData, TValue>({
                     <Checkbox
                       aria-label="Select all rows"
                       checked={
-                        table.getIsAllRowsSelected() ||
-                        (table.getIsSomeRowsSelected()
-                          ? 'indeterminate'
-                          : false)
+                        (totalRows > 0 && table.getIsAllRowsSelected()) ||
+                        (selectedRows > 0 ? 'indeterminate' : false)
                       }
-                      onCheckedChange={(value) =>
-                        table.toggleAllRowsSelected(Boolean(value))
-                      }
+                      onCheckedChange={(value) => {
+                        if (!value) {
+                          setRowSelection({});
+                        } else {
+                          table.toggleAllRowsSelected(true);
+                        }
+                      }}
                       className="border-primary-foreground/70 data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=indeterminate]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary dark:border-white/70 dark:data-[state=checked]:border-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-primary dark:data-[state=indeterminate]:border-white dark:data-[state=indeterminate]:bg-white dark:data-[state=indeterminate]:text-primary"
                     />
                   </div>
