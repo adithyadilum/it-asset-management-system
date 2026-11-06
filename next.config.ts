@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
     : ['localhost:3000', '127.0.0.1', '192.168.8.101'],
   reactCompiler: true,
   cacheComponents: true,
+  // Preserve pre-16.4 prefetch behavior while migrating this existing app.
+  partialPrefetching: false,
   experimental: {
     // `instantNavigationDevToolsToggle` was dropped in Next 16.3 with no
     // replacement. It only controlled the dev overlay, so nothing is lost.
