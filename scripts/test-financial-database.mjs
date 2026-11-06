@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import postgres from 'postgres';
 
+const inventory = process.argv.includes('--inventory');
+
 // Isolated cluster: this script never reads DATABASE_URL or application secrets.
 const parent = resolve(tmpdir());
 const cluster = mkdtempSync(join(parent, 'itams-financial-test-'));
@@ -75,24 +77,36 @@ try {
         'run',
         '--pool=forks',
         '--maxWorkers=1',
-        'src/test/financials/per-head-database.integration.test.ts',
+        inventory
+          ? 'src/test/inventory/mobile-inventory-database.integration.test.ts'
+          : 'src/test/financials/per-head-database.integration.test.ts',
       ],
       {
         stdio: 'inherit',
         windowsHide: true,
-        env: { ...process.env, FINANCIAL_TEST_DATABASE_URL: url },
+        env: {
+          ...process.env,
+          ...(inventory
+            ? { INVENTORY_TEST_DATABASE_URL: url }
+            : { FINANCIAL_TEST_DATABASE_URL: url }),
+        },
       }
     );
     child.on('error', reject);
     child.on('exit', done);
   });
   process.exitCode = code ?? 1;
-  if (code === 0 && process.argv.includes('--ui')) {
+  if (!inventory && code === 0 && process.argv.includes('--ui')) {
     const uiCode = await new Promise((done, reject) => {
       const child = spawn(process.execPath, ['scripts/smoke-per-head-ui.mjs'], {
         stdio: 'inherit',
         windowsHide: true,
-        env: { ...process.env, FINANCIAL_TEST_DATABASE_URL: url },
+        env: {
+          ...process.env,
+          ...(inventory
+            ? { INVENTORY_TEST_DATABASE_URL: url }
+            : { FINANCIAL_TEST_DATABASE_URL: url }),
+        },
       });
       child.on('error', reject);
       child.on('exit', done);

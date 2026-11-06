@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { omniSearchQuerySchema } from '../validations/omni-search';
 import { updateNotificationRuleSchema } from '../validations/settings';
 import { flagForRepairSchema } from '../validations/maintenance';
+import { inventoryQuerySchema } from '../validations/inventory';
 
 // Apply the OpenAPI extensions to the Zod library
 extendZodWithOpenApi(z);
@@ -1272,6 +1273,141 @@ registry.registerPath({
     },
     409: {
       description: 'Open maintenance ticket or terminal asset',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+// --- Group: Mobile inventory ---
+const InventoryAssetSchema = z.object({
+  id: z.string().uuid(),
+  assetTag: z.string(),
+  name: z.string().nullable(),
+  serialNumber: z.string().nullable(),
+  status: z.string(),
+  condition: z.string().nullable(),
+  model: z.string(),
+  brand: z.string(),
+  imageUrl: z.string().nullable(),
+  category: z.string(),
+  pillar: z.string(),
+  location: z.string().nullable(),
+  assignedTo: z.string().nullable(),
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/inventory',
+  summary: 'Browse and search the asset inventory',
+  description:
+    'Requires registry access. Matches every search term across tag, serial, asset name, brand, model, category and location. Excludes archived assets and inactive categories. Software statuses are calculated from expiry and active seat allocations.',
+  security: [{ MobileBearerAuth: [] }, { CookieAuth: [] }],
+  tags: ['Inventory'],
+  request: { query: inventoryQuerySchema },
+  responses: {
+    200: {
+      description: 'Paginated operational inventory and filter options',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(InventoryAssetSchema),
+            meta: z.object({
+              total: z.number(),
+              page: z.number(),
+              pageSize: z.number(),
+              totalPages: z.number(),
+            }),
+            filters: z.object({
+              categories: z.array(
+                z.object({
+                  id: z.number(),
+                  name: z.string(),
+                  pillar: z.string(),
+                })
+              ),
+              locations: z.array(
+                z.object({ id: z.number(), name: z.string() })
+              ),
+              statuses: z.array(z.string()),
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Invalid filters',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthenticated',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Registry access required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: 'Database temporarily unavailable',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/inventory/{assetId}',
+  summary: 'Get an operational asset profile',
+  description:
+    'Requires registry access. Includes product specifications, custody, warranty, software seat usage, the latest five maintenance tickets and twenty activity events. Excludes prices, invoices, licence keys, internal assignment notes and raw audit values.',
+  security: [{ MobileBearerAuth: [] }, { CookieAuth: [] }],
+  tags: ['Inventory'],
+  request: { params: z.object({ assetId: z.string().uuid() }) },
+  responses: {
+    200: {
+      description: 'Operational asset profile',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              asset: z
+                .object({
+                  id: z.string().uuid(),
+                  assetTag: z.string(),
+                  status: z.string(),
+                })
+                .passthrough(),
+              model: z
+                .object({ id: z.number(), name: z.string() })
+                .passthrough(),
+              specifications: z.record(z.string(), z.unknown()),
+              warrantyExpiry: z.string().nullable(),
+              location: z.record(z.string(), z.unknown()).nullable(),
+              owner: z.record(z.string(), z.unknown()).nullable(),
+              assignment: z.record(z.string(), z.unknown()).nullable(),
+              softwareLicense: z.record(z.string(), z.unknown()).nullable(),
+              history: z.array(z.record(z.string(), z.unknown())),
+              maintenance: z.array(z.record(z.string(), z.unknown())),
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Invalid asset identifier',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthenticated',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Registry access required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Asset not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: 'Database temporarily unavailable',
       content: { 'application/json': { schema: ErrorResponseSchema } },
     },
   },
