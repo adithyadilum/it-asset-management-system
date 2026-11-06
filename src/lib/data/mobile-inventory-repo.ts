@@ -42,6 +42,19 @@ export async function getMobileInventory(filters: InventoryQuery) {
   );
   const matching = and(
     visible,
+    filters.operation ? sql`${categories.pillar} <> 'Software'` : undefined,
+    filters.operation === 'handover'
+      ? and(
+          eq(assets.status, 'Available'),
+          sql`not exists (select 1 from ${assetAssignments} where ${assetAssignments.assetId} = ${assets.id} and ${assetAssignments.returnedDate} is null)`
+        )
+      : undefined,
+    filters.operation === 'return'
+      ? and(
+          eq(assets.status, 'Assigned'),
+          sql`exists (select 1 from ${assetAssignments} where ${assetAssignments.assetId} = ${assets.id} and ${assetAssignments.returnedDate} is null and ${assetAssignments.state} in ('assigned','overdue','requested'))`
+        )
+      : undefined,
     filters.pillar ? eq(categories.pillar, filters.pillar) : undefined,
     filters.categoryId ? eq(categories.id, filters.categoryId) : undefined,
     filters.locationId ? eq(locations.id, filters.locationId) : undefined,
@@ -177,6 +190,7 @@ export async function getMobileAssetProfile(id: string) {
         name: asset.name,
         serialNumber: asset.serialNumber,
         status: asset.status,
+        isArchived: Boolean(asset.isArchived),
         condition: asset.condition,
         createdAt: asset.createdAt,
         updatedAt: asset.updatedAt,
@@ -201,6 +215,7 @@ export async function getMobileAssetProfile(id: string) {
       warrantyExpiry: details.purchase?.warrantyExpiry ?? null,
       assignment: assignment
         ? {
+            id: assignment.id,
             assignedToUser: assignment.assignedToUser,
             assignedToLocation: assignment.assignedToLocation,
             assignedDate: assignment.assignedDate,

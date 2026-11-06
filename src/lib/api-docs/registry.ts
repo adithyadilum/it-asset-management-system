@@ -7,6 +7,13 @@ import { z } from 'zod';
 import { omniSearchQuerySchema } from '../validations/omni-search';
 import { updateNotificationRuleSchema } from '../validations/settings';
 import { flagForRepairSchema } from '../validations/maintenance';
+import {
+  mobileHandoverSchema,
+  mobileAssignmentActionSchema,
+  mobileInspectionSchema,
+  mobileRecipientsQuerySchema,
+  mobileTasksQuerySchema,
+} from '../validations/mobile-operations';
 import { inventoryQuerySchema } from '../validations/inventory';
 
 // Apply the OpenAPI extensions to the Zod library
@@ -1409,6 +1416,170 @@ registry.registerPath({
     503: {
       description: 'Database temporarily unavailable',
       content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+// Mobile operations keep user acceptance in My Assets and use the shared custody state machine.
+const MobileOperationResponse = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  assignmentId: z.number().optional(),
+});
+const MobileOperationErrors = {
+  400: {
+    description: 'Invalid input',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  401: {
+    description: 'A paired mobile bearer token is required',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  403: {
+    description: 'IT operator or GlobalAdmin access required',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  409: {
+    description: 'Asset or assignment changed; refresh before retrying',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  503: {
+    description:
+      'Service temporarily unavailable; writes are never automatically retried',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+};
+registry.registerPath({
+  method: 'get',
+  path: '/v1/operations/tasks',
+  summary: 'Get the mobile operational work queue',
+  tags: ['Mobile Operations'],
+  description:
+    'Live prioritized queues for handovers, returns due within seven days, received assets awaiting inspection, maintenance, software renewals, warranties and administrator-only disposal approvals. Dates use Asia/Colombo. Counts cover the full queue; filters and pagination apply to data.',
+  security: [{ MobileBearerAuth: [] }],
+  request: { query: mobileTasksQuerySchema },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Live task rows, per-kind counts, and pagination',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(
+              z
+                .object({
+                  id: z.string(),
+                  kind: z.string(),
+                  assetId: z.string().uuid(),
+                  assetTag: z.string(),
+                  name: z.string(),
+                  detail: z.string(),
+                  dueDate: z.string().nullable(),
+                })
+                .passthrough()
+            ),
+            counts: z.record(z.string(), z.number()),
+            meta: z.object({
+              total: z.number(),
+              page: z.number(),
+              pageSize: z.number(),
+              totalPages: z.number(),
+            }),
+          }),
+        },
+      },
+    },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/v1/operations/recipients',
+  summary: 'Search active handover recipients',
+  tags: ['Mobile Operations'],
+  description:
+    'Returns up to twenty active people or locations. Employee searches require at least two characters.',
+  security: [{ MobileBearerAuth: [] }],
+  request: { query: mobileRecipientsQuerySchema },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Bounded recipient matches',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(
+              z.object({
+                id: z.union([z.string(), z.number()]),
+                name: z.string(),
+                detail: z.string(),
+              })
+            ),
+            hasMore: z.boolean(),
+          }),
+        },
+      },
+    },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/operations/handovers',
+  summary: 'Create a guarded mobile handover',
+  tags: ['Mobile Operations'],
+  description:
+    'Only available, non-archived equipment without open custody is eligible. expectedUpdatedAt comes from the latest asset profile. Employee handovers remain pending acceptance in My Assets; location custody takes effect immediately.',
+  security: [{ MobileBearerAuth: [] }],
+  request: {
+    body: { content: { 'application/json': { schema: mobileHandoverSchema } } },
+  },
+  responses: {
+    ...MobileOperationErrors,
+    201: {
+      description: 'Custody record created',
+      content: { 'application/json': { schema: MobileOperationResponse } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/operations/assignments/{id}',
+  summary: 'Receive equipment, request return, or remind an employee',
+  tags: ['Mobile Operations'],
+  description:
+    'Checks assignment ID, asset revision and current custody under database locks. Receiving ends custody and leaves the asset Returned, pending inspection. Acceptance reminders are persisted in-app and limited to once per five minutes per asset.',
+  security: [{ MobileBearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.coerce.number().int().positive() }),
+    body: {
+      content: { 'application/json': { schema: mobileAssignmentActionSchema } },
+    },
+  },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Operation recorded',
+      content: { 'application/json': { schema: MobileOperationResponse } },
+    },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/v1/operations/inspections',
+  summary: 'Inspect a received asset',
+  tags: ['Mobile Operations'],
+  description:
+    'Requires a fresh Returned asset revision. Uses the desktop return logic to release equipment, open maintenance, or create a disposal request awaiting approval.',
+  security: [{ MobileBearerAuth: [] }],
+  request: {
+    body: {
+      content: { 'application/json': { schema: mobileInspectionSchema } },
+    },
+  },
+  responses: {
+    ...MobileOperationErrors,
+    200: {
+      description: 'Condition check recorded',
+      content: { 'application/json': { schema: MobileOperationResponse } },
     },
   },
 });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const inventoryQuerySchema = z.object({
   query: z.string().trim().max(120).default(''),
+  operation: z.enum(['handover', 'return']).optional(),
   pillar: z
     .enum(['Hardware', 'Software', 'Office Furniture', 'Office Electronics'])
     .optional(),

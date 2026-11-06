@@ -80,6 +80,11 @@ try {
         inventory
           ? 'src/test/inventory/mobile-inventory-database.integration.test.ts'
           : 'src/test/financials/per-head-database.integration.test.ts',
+        ...(inventory
+          ? [
+              'src/test/operations/mobile-operations-database.integration.test.ts',
+            ]
+          : []),
       ],
       {
         stdio: 'inherit',
