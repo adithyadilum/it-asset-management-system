@@ -17,7 +17,7 @@ interface DashboardRefreshContextValue {
 }
 
 const DashboardRefreshContext = createContext<DashboardRefreshContextValue>({
-  lastRefreshedAt: new Date(),
+  lastRefreshedAt: new Date(0),
   refresh: () => {},
 });
 
@@ -31,11 +31,15 @@ export function useDashboardRefresh() {
  */
 export function DashboardRefreshProvider({
   children,
+  initialRefreshedAt,
 }: {
   children: React.ReactNode;
+  initialRefreshedAt: string;
 }) {
   const router = useRouter();
-  const [lastRefreshedAt, setLastRefreshedAt] = useState(() => new Date());
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(
+    () => new Date(initialRefreshedAt)
+  );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(() => {
@@ -54,10 +58,10 @@ export function DashboardRefreshProvider({
     };
   }, [refresh]);
 
-  // Trigger refresh on mount (landing from another page) and tab focus
+  // The incoming server response already contains fresh data. Refreshing on
+  // mount can replace that response while its Suspense boundaries hydrate.
+  // Refresh only when the user returns to an existing dashboard.
   useEffect(() => {
-    const t = setTimeout(() => refresh(), 0);
-
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         refresh();
@@ -74,7 +78,6 @@ export function DashboardRefreshProvider({
     window.addEventListener('focus', handleFocus);
 
     return () => {
-      clearTimeout(t);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };

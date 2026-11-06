@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -32,12 +32,9 @@ function getRelativeTimeString(date: Date): string {
 export function DashboardHeader({ userName, userRole }: DashboardHeaderProps) {
   const { lastRefreshedAt, refresh } = useDashboardRefresh();
 
-  // Compute initial value synchronously instead of calling setState in effect
-  const initialRelativeTime = useMemo(
-    () => getRelativeTimeString(lastRefreshedAt),
-    [lastRefreshedAt]
-  );
-  const [relativeTime, setRelativeTime] = useState(initialRelativeTime);
+  // The first render is shared by the server and hydration. Read the browser
+  // clock only in the effect, after the incoming stream has been hydrated.
+  const [relativeTime, setRelativeTime] = useState('Just now');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Re-sync when lastRefreshedAt changes and tick every 30s
@@ -62,7 +59,8 @@ export function DashboardHeader({ userName, userRole }: DashboardHeaderProps) {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(new Date());
+    timeZone: 'Asia/Colombo',
+  }).format(lastRefreshedAt);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

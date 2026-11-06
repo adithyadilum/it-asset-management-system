@@ -142,6 +142,16 @@ EITAMS includes a dedicated **React Native mobile companion app** built using Ex
    ```
    The application will be available at `http://localhost:3000`.
 
+Playwright starts its server in `.next-e2e`, keeping test-generated chunks and
+compiler caches separate from the normal development server in `.next`.
+
+If development repeatedly reloads unchanged pages and reports an unfinished
+Suspense boundary after a dependency upgrade, stop the development server and
+remove only `.next/dev/cache/turbopack`. Restart `npm run dev` and reload the
+browser. This rebuilds the local compiler cache; it does not change application
+data. Server rendering errors that persist with a fresh cache still need to be
+investigated in the server log.
+
 ---
 
 ## Testing & Quality Assurance

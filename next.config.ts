@@ -35,6 +35,9 @@ const contentSecurityPolicy = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  // Browser tests use different server settings and must not replace the local
+  // development server's generated chunks or persistent compiler cache.
+  distDir: process.env.PLAYWRIGHT_TEST === 'true' ? '.next-e2e' : '.next',
   reactStrictMode: true,
   allowedDevOrigins: isProduction
     ? []

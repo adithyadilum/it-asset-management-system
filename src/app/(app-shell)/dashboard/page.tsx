@@ -64,7 +64,7 @@ async function DashboardPageContent() {
   }
 
   return (
-    <DashboardRefreshProvider>
+    <DashboardRefreshProvider initialRefreshedAt={new Date().toISOString()}>
       <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-background overflow-hidden">
         {/* Pinned header */}
         <div className="shrink-0 px-6 pt-6 pb-3 bg-background">
