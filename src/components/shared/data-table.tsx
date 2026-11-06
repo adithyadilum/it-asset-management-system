@@ -416,9 +416,7 @@ export function DataTable<TData, TValue>({
                       aria-label="Select all rows"
                       checked={
                         (totalRows > 0 && table.getIsAllRowsSelected()) ||
-                        (selectedRows > 0
-                          ? 'indeterminate'
-                          : false)
+                        (selectedRows > 0 ? 'indeterminate' : false)
                       }
                       onCheckedChange={(value) => {
                         if (!value) {

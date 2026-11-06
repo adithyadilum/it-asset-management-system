@@ -84,11 +84,9 @@ describe('authOptions callbacks', () => {
       // User does not exist in DB
       findFirstMock.mockResolvedValue(null);
 
-      const insertValuesMock = vi
-        .fn()
-        .mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: 'new-user' }]),
-        });
+      const insertValuesMock = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'new-user' }]),
+      });
       insertMock.mockReturnValue({
         values: insertValuesMock,
       });
@@ -121,11 +119,9 @@ describe('authOptions callbacks', () => {
     it('JIT provisions using preferred_username if name is missing in profile', async () => {
       findFirstMock.mockResolvedValue(null);
 
-      const insertValuesMock = vi
-        .fn()
-        .mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: 'new-user' }]),
-        });
+      const insertValuesMock = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'new-user' }]),
+      });
       insertMock.mockReturnValue({
         values: insertValuesMock,
       });

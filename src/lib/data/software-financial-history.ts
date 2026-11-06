@@ -33,18 +33,16 @@ export async function recordInitialSoftwareTerm(
   // A missing perpetual life or subscription term is an exception to configure,
   // never a guessed expense schedule.
   if (to == null || to <= from) return;
-  await tx
-    .insert(softwareFinancialTerms)
-    .values({
-      licenseId: input.licenseId,
-      sourcePurchaseId: input.purchaseId,
-      amount: input.licenseType === 'Open Source / Free' ? '0' : input.amount,
-      currencyCode: input.currency,
-      exchangeRate: input.exchangeRate,
-      validFrom: new Date(from),
-      validTo: new Date(to),
-      seats: input.seats,
-      allocationLifeMonths:
-        input.licenseType === 'Perpetual' ? input.allocationLifeMonths : null,
-    });
+  await tx.insert(softwareFinancialTerms).values({
+    licenseId: input.licenseId,
+    sourcePurchaseId: input.purchaseId,
+    amount: input.licenseType === 'Open Source / Free' ? '0' : input.amount,
+    currencyCode: input.currency,
+    exchangeRate: input.exchangeRate,
+    validFrom: new Date(from),
+    validTo: new Date(to),
+    seats: input.seats,
+    allocationLifeMonths:
+      input.licenseType === 'Perpetual' ? input.allocationLifeMonths : null,
+  });
 }

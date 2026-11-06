@@ -38,11 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import type {
-  OnChangeFn,
-  Row,
-  RowSelectionState,
-} from '@tanstack/react-table';
+import type { OnChangeFn, Row, RowSelectionState } from '@tanstack/react-table';
 import type {
   AssetRegistryCategory,
   AssetRegistryResult,

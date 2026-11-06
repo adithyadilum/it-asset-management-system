@@ -67,14 +67,12 @@ export async function synchronizeFinancialDepartment(
           )
         );
     if (!current)
-      await tx
-        .insert(financialMemberships)
-        .values({
-          userId,
-          groupId: group.id,
-          validFrom: at,
-          reason: 'Department synchronized at sign-in',
-        });
+      await tx.insert(financialMemberships).values({
+        userId,
+        groupId: group.id,
+        validFrom: at,
+        reason: 'Department synchronized at sign-in',
+      });
     await tx.update(users).set({ departmentId }).where(eq(users.id, userId));
     if (!current || obsolete.length)
       await logAuditActionTx(tx, {

@@ -339,17 +339,15 @@ export async function renewSoftwareLicenseAction(
           throw new Error(
             'Paid coverage overlaps an existing term. Correct the financial term before renewing.'
           );
-        await tx
-          .insert(softwareFinancialTerms)
-          .values({
-            licenseId: license.id,
-            amount: parsed.data.renewalAmount ?? null,
-            currencyCode: renewalCurrency,
-            exchangeRate,
-            validFrom: new Date(start),
-            validTo: new Date(end),
-            seats: totalSeats ?? license.totalSeats,
-          });
+        await tx.insert(softwareFinancialTerms).values({
+          licenseId: license.id,
+          amount: parsed.data.renewalAmount ?? null,
+          currencyCode: renewalCurrency,
+          exchangeRate,
+          validFrom: new Date(start),
+          validTo: new Date(end),
+          seats: totalSeats ?? license.totalSeats,
+        });
       }
 
       const [updated] = await tx
