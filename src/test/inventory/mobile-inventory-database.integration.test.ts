@@ -255,6 +255,77 @@ describe.skipIf(!state.url)('inventory queries on isolated PostgreSQL', () => {
     (await import('@/lib/data/mobile-inventory-repo')).getMobileInventory(
       inventoryQuerySchema.parse({ query: prefix, ...filters })
     );
+  it('returns only the current user software seats alongside equipment, without licence secrets', async () => {
+    const { getMobileMyAssets } =
+      await import('@/lib/data/mobile-my-assets-repo');
+    const mine = await getMobileMyAssets(userIds[0]);
+    expect(mine.data.map((row) => row.id)).toContain(laptopId);
+    expect(mine.software.map((row) => row.tagId).sort()).toEqual([
+      `${prefix}-06`,
+      `${prefix}-08`,
+    ]);
+    expect(
+      mine.software.every((row) => typeof row.allocatedDate === 'string')
+    ).toBe(true);
+    const other = await getMobileMyAssets(userIds[1]);
+    expect(other.data).toEqual([]);
+    expect(other.software.map((row) => row.tagId)).toEqual([`${prefix}-06`]);
+    expect(JSON.stringify(mine)).not.toMatch(
+      /licenseKey|private-key|admin_password|totalCost|totalSeats/
+    );
+  });
+  it('shows expired and unlinked seats, and excludes inactive, revoked and archived software', async () => {
+    const licenses = await db
+      .insert(schema.softwareLicenses)
+      .values([
+        {
+          modelId: modelIds[1],
+          licenseType: 'Subscription',
+          expiryDate: '2020-01-01',
+          licenseKey: 'secret-seat-key',
+        },
+        { modelId: modelIds[1], licenseType: 'Subscription', isActive: false },
+        { modelId: modelIds[1], assetId: ids[2], licenseType: 'Subscription' },
+      ])
+      .returning();
+    try {
+      const allocations = await db
+        .insert(schema.softwareAllocations)
+        .values(
+          licenses.map((license) => ({
+            licenseId: license.id,
+            assignedToUserId: userIds[0],
+          }))
+        )
+        .returning();
+      const { getMobileMyAssets } =
+        await import('@/lib/data/mobile-my-assets-repo');
+      const mine = await getMobileMyAssets(userIds[0]);
+      const seat = mine.software.find(
+        (row) => row.allocationId === allocations[0].id
+      );
+      expect(seat).toMatchObject({
+        assetId: null,
+        tagId: null,
+        expiryDate: '2020-01-01',
+      });
+      expect(
+        mine.software.some(
+          (row) =>
+            row.allocationId === allocations[1].id ||
+            row.allocationId === allocations[2].id
+        )
+      ).toBe(false);
+      expect(JSON.stringify(mine)).not.toContain('secret-seat-key');
+    } finally {
+      await db.delete(schema.softwareLicenses).where(
+        inArray(
+          schema.softwareLicenses.id,
+          licenses.map((row) => row.id)
+        )
+      );
+    }
+  });
   it('searches across brand and model while excluding archived and inactive categories', async () => {
     const result = await list({ query: `${prefix} Dell Latitude` });
     expect(result.meta.total).toBe(2);

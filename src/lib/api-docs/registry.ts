@@ -1194,7 +1194,7 @@ const mobileResponses = (schema: z.ZodType) => ({
 registry.registerPath({
   method: 'get',
   path: '/v1/assets/my-assets',
-  summary: 'Get equipment assigned to the paired user',
+  summary: 'Get equipment and software seats assigned to the paired user',
   security: [{ MobileBearerAuth: [] }],
   tags: ['Device Operations'],
   responses: mobileResponses(
@@ -1217,6 +1217,20 @@ registry.registerPath({
           location: z.string().optional(),
           assignedByName: z.string().optional(),
           condition: z.string().optional(),
+        })
+      ),
+      software: z.array(
+        z.object({
+          allocationId: z.number().int(),
+          assetId: z.string().uuid().nullable(),
+          tagId: z.string().nullable(),
+          name: z.string(),
+          brand: z.string(),
+          category: z.string(),
+          imageUrl: z.string().nullable(),
+          allocatedDate: z.string(),
+          licenseType: z.string(),
+          expiryDate: z.string().nullable(),
         })
       ),
     })
